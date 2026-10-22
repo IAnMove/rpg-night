@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "fixture-reference",
+  "version": 1,
+  "title": "An invalid reference example",
+  "locale": "en",
+  "genre": "example",
+  "tone": "neutral",
+  "duration_minutes": 10,
+  "players": { "min": 1, "max": 4 },
+  "content_limits": [],
+  "objective": "Reach an ending.",
+  "characters": [],
+  "items": [],
+  "variables": {},
+  "initial_node_id": "opening",
+  "nodes": [
+    {
+      "id": "opening",
+      "kind": "scene",
+      "title": "Opening",
+      "narration": "A path branches.",
+      "secrets": [],
+      "choices": [
+        { "id": "go-left", "label": "Go left", "action": "Go left", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "missing-node" } },
+        { "id": "go-right", "label": "Go right", "action": "Go right", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "ending" } }
+      ]
+    },
+    {
+      "id": "ending",
+      "kind": "ending",
+      "title": "Ending",
+      "narration": "The path ends.",
+      "secrets": [],
+      "choices": []
+    },
+    {
+      "id": "unused-ending",
+      "kind": "ending",
+      "title": "Unused ending",
+      "narration": "This ending is unreachable.",
+      "secrets": [],
+      "choices": []
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "id": "fixture-cycle",
+  "version": 1,
+  "title": "A cyclic example",
+  "locale": "en",
+  "genre": "example",
+  "tone": "neutral",
+  "duration_minutes": 10,
+  "players": { "min": 1, "max": 4 },
+  "content_limits": [],
+  "objective": "Reach an ending.",
+  "characters": [],
+  "items": [],
+  "variables": {},
+  "initial_node_id": "opening",
+  "nodes": [
+    {
+      "id": "opening",
+      "kind": "scene",
+      "title": "Opening",
+      "narration": "A path branches.",
+      "secrets": [],
+      "choices": [
+        { "id": "loop", "label": "Return", "action": "Return", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "middle" } },
+        { "id": "finish-one", "label": "Finish", "action": "Finish", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "ending" } }
+      ]
+    },
+    {
+      "id": "middle",
+      "kind": "scene",
+      "title": "Middle",
+      "narration": "The path turns back.",
+      "secrets": [],
+      "choices": [
+        { "id": "loop-back", "label": "Go back", "action": "Go back", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "opening" } },
+        { "id": "finish-two", "label": "Finish", "action": "Finish", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "ending" } }
+      ]
+    },
+    {
+      "id": "ending",
+      "kind": "ending",
+      "title": "Ending",
+      "narration": "The path ends.",
+      "secrets": [],
+      "choices": []
+    }
+  ]
+}

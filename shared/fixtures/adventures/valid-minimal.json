@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "id": "fixture-minimal",
+  "version": 1,
+  "title": "A short example",
+  "locale": "en",
+  "genre": "example",
+  "tone": "calm",
+  "duration_minutes": 10,
+  "players": { "min": 1, "max": 4 },
+  "content_limits": [],
+  "objective": "Reach one of the available endings.",
+  "characters": [],
+  "items": [],
+  "variables": {},
+  "initial_node_id": "opening",
+  "nodes": [
+    {
+      "id": "opening",
+      "kind": "scene",
+      "title": "Opening",
+      "narration": "A quiet path divides in two.",
+      "secrets": [],
+      "choices": [
+        {
+          "id": "left-path",
+          "label": "Take the left path",
+          "action": "Take the left path",
+          "conditions": [],
+          "effects": [],
+          "transition": { "kind": "direct", "target_node_id": "left-ending" }
+        },
+        {
+          "id": "right-path",
+          "label": "Take the right path",
+          "action": "Take the right path",
+          "conditions": [],
+          "effects": [],
+          "transition": { "kind": "direct", "target_node_id": "right-ending" }
+        }
+      ]
+    },
+    {
+      "id": "left-ending",
+      "kind": "ending",
+      "title": "Left ending",
+      "narration": "The left path reaches its destination.",
+      "secrets": [],
+      "choices": []
+    },
+    {
+      "id": "right-ending",
+      "kind": "ending",
+      "title": "Right ending",
+      "narration": "The right path reaches its destination.",
+      "secrets": [],
+      "choices": []
+    }
+  ]
+}

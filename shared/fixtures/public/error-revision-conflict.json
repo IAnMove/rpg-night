@@ -1,0 +1,7 @@
+{
+  "kind": "error",
+  "code": "REVISION_CONFLICT",
+  "message": "The session changed since this action was prepared.",
+  "retryable": true,
+  "current_revision": 6
+}

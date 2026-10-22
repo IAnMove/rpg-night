@@ -1,0 +1,75 @@
+{
+  "fixture_version": 1,
+  "adventure_id": "elderglen",
+  "locale": "en",
+  "purpose": "Synthetic host-evaluation dialogue; compare intent and state effects, not exact narration.",
+  "scenarios": [
+    {
+      "id": "ordinal-choice",
+      "setup": "A newly started turn is at arrival and exposes two choices in order: visit-green, follow-bank.",
+      "turns": [{ "player": "1", "expected": { "interaction": { "kind": "choice", "choice_id": "visit-green" }, "state": "advance once to green; do not roll" } }],
+      "pass_criteria": ["Resolve the spoken ordinal against the current displayed choice order.", "Submit one choice only and summarize the returned green scene."]
+    },
+    {
+      "id": "paraphrase-social",
+      "setup": "At green, the player wants to hear the keeper and neighbors before deciding.",
+      "turns": [{ "player": "Let's hear what Elin and the neighbors need before we make a plan.", "expected": { "interaction": { "kind": "choice", "choice_id": "ask-warden" }, "effects": { "trust": 1 }, "next_scene": "lantern-room" } }],
+      "pass_criteria": ["Map the paraphrase to the matching current choice.", "Apply its effect once; preserve the player's intent without inventing new facts."]
+    },
+    {
+      "id": "free-action-keeper",
+      "setup": "At green, current affordance speak-with-warden targets warden-elin and allows listen-first or share-observation.",
+      "turns": [{ "player": "I listen to Elin's concerns and ask the neighbors what matters to them.", "expected": { "interaction": { "kind": "free_action", "affordance_id": "speak-with-warden", "target_id": "warden-elin", "approach_id": "listen-first" }, "resolution_choice_id": "ask-warden", "effects": { "trust": 1 }, "next_scene": "lantern-room" } }],
+      "pass_criteria": ["Ground the free action in the listed affordance and IDs.", "Resolve only through the affordance's authorized choice; do not invent effects or a destination."]
+    },
+    {
+      "id": "free-action-prism-route",
+      "setup": "At ferry, the party can ask Oren to cross or search the shed. It chooses the shed, obtains glass-prism, then reaches bell-tower.",
+      "turns": [
+        { "player": "Let's search the shed for anything that could carry the warning farther.", "expected": { "interaction": { "kind": "free_action", "affordance_id": "search-ferry-shed", "target_id": "ferry-shed", "approach_id": "search-shed" }, "resolution_choice_id": "search-shed", "inventory_add": "glass-prism", "next_scene": "lantern-room" } },
+        { "player": "At the tower, fit the prism to the bell mechanism before pulling the lever.", "expected": { "interaction": { "kind": "free_action", "affordance_id": "align-prism-with-lever", "target_id": "release-lever", "item_id": "glass-prism", "approach_id": "fit-prism" }, "resolution_choice_id": "align-prism", "check_dc": 9, "inventory_remove": "glass-prism", "phase": "awaiting_check" } }
+      ],
+      "pass_criteria": ["A free action that searches the shed acquires the authored item.", "The prism-specific action is distinct from the ordinary lever check and uses its lower authored difficulty.", "Do not consume the prism or roll until the corresponding server mutation is accepted."]
+    },
+    {
+      "id": "close-pending-check",
+      "setup": "The session is awaiting resolution of a server-created d20 check at bell-tower.",
+      "turns": [{ "player": "Let's stop here and close the game.", "expected": { "tool": "end_session", "phase": "ended", "scene_unchanged": true, "pending_check": null, "rolls": 0, "ending_node": false } }],
+      "pass_criteria": ["Explicit closure cancels the pending check without consuming RNG.", "Do not invent a story ending; keep the current scene and record a close event."]
+    },
+    {
+      "id": "ambiguous-intent",
+      "setup": "At arrival, both village green and riverbank are available.",
+      "turns": [
+        { "player": "Maybe we should ask around, unless the river is more important?", "expected": { "response": "clarification", "state": "no interaction submitted; revision and scene unchanged" } },
+        { "player": "Let's start by asking the villagers.", "expected": { "interaction": { "kind": "choice", "choice_id": "visit-green" }, "next_scene": "green", "mutations": 1 } }
+      ],
+      "pass_criteria": ["Clarify the two plausible intents without choosing for the player.", "Only the follow-up choice advances the session."]
+    },
+    {
+      "id": "read-and-retry-control",
+      "setup": "At bank after following the river, the inventory is empty and revision is recorded by the fixture runner.",
+      "turns": [
+        { "player": "What do we carry, and what can we do here?", "expected": { "tool": "get_session", "state": "return current inventory and choices; no revision change" } },
+        { "player": "Pause here.", "expected": { "tool": "pause_session", "mutations": 1, "scene_change": false } },
+        { "player": "Let's continue. Remind us where we are.", "expected": { "tool": "resume_session then get_session", "mutations": 1, "scene_change": false, "recap": "briefly ground recap in persisted current scene" } }
+      ],
+      "pass_criteria": ["A read does not submit an action or change the game revision.", "Pause and resume are idempotent state controls, not story choices.", "Resume uses persisted state and does not select a path."]
+    },
+    {
+      "id": "object-and-finale",
+      "setup": "Party took brass-key at archives and reaches lantern-room with the item in inventory.",
+      "turns": [
+        { "player": "Use the brass key to get the warning lantern working.", "expected": { "interaction": { "kind": "choice", "choice_id": "light-lantern" }, "effects": { "remove_item": "brass-key", "lantern-lit": 1 }, "next_scene": "bell-tower" } },
+        { "player": "At the spillway, ring the bell so the village can reach higher ground.", "expected": { "interaction": { "kind": "choice", "choice_id": "ring-warning" }, "ending": "ending-warning", "ending_reason": "players chose warning and shelter" } }
+      ],
+      "pass_criteria": ["Require and consume the actual key exactly once.", "The setback branch of test-lever still reaches gate.", "Use the selected gate decision to determine the ending; do not rewrite played events."]
+    },
+    {
+      "id": "alternate-finale",
+      "setup": "Party followed either route and reaches gate after the d20 setback branch.",
+      "turns": [{ "player": "Open the spillway toward the empty marsh and keep the homes dry.", "expected": { "interaction": { "kind": "choice", "choice_id": "open-spillway" }, "ending": "ending-marsh", "ending_reason": "players chose to divert water" } }],
+      "pass_criteria": ["A setback did not remove the finale decision.", "Render the marsh ending from the returned state, without claiming the village rang the bell."]
+    }
+  ]
+}

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="RPG Night — couch co-op voice-led adventures shared on your TV." />
+  <title>RPG Night</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main" data-i18n="skipToContent">Skip to content</a>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <!-- ─── Landing ─── -->
+  <section id="landing" class="landing" aria-labelledby="landing-title">
+    <div class="landing-brand"><span aria-hidden="true">✧</span> RPG Night</div>
+    <div class="landing-art" aria-hidden="true">
+      <svg class="cover-svg" viewBox="0 0 800 900" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#0a1220"/>
+            <stop offset="55%" stop-color="#132238"/>
+            <stop offset="100%" stop-color="#1a2a3a"/>
+          </linearGradient>
+          <radialGradient id="moonGlow" cx="70%" cy="18%" r="28%">
+            <stop offset="0%" stop-color="#f5e6c8" stop-opacity="0.55"/>
+            <stop offset="45%" stop-color="#c9a86a" stop-opacity="0.12"/>
+            <stop offset="100%" stop-color="#0a1220" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="mountainFar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#1e3348"/>
+            <stop offset="100%" stop-color="#122030"/>
+          </linearGradient>
+          <linearGradient id="mountainNear" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#243848"/>
+            <stop offset="100%" stop-color="#0e1a28"/>
+          </linearGradient>
+          <linearGradient id="castleLight" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#edcb89"/>
+            <stop offset="100%" stop-color="#a87830" stop-opacity="0.4"/>
+          </linearGradient>
+        </defs>
+        <rect width="800" height="900" fill="url(#sky)"/>
+        <rect width="800" height="900" fill="url(#moonGlow)"/>
+        <!-- stars -->
+        <g fill="#f3e9d5" opacity="0.55">
+          <circle cx="80" cy="70" r="1.2"/><circle cx="160" cy="40" r="0.9"/><circle cx="220" cy="110" r="1.4"/>
+          <circle cx="340" cy="55" r="1"/><circle cx="420" cy="95" r="0.8"/><circle cx="520" cy="35" r="1.3"/>
+          <circle cx="610" cy="80" r="0.9"/><circle cx="700" cy="50" r="1.1"/><circle cx="750" cy="130" r="0.7"/>
+          <circle cx="90" cy="180" r="0.8"/><circle cx="280" cy="150" r="1"/><circle cx="480" cy="170" r="0.7"/>
+        </g>
+        <!-- moon -->
+        <circle cx="560" cy="150" r="48" fill="#f5e6c8" opacity="0.92"/>
+        <circle cx="575" cy="138" r="42" fill="#0a1220" opacity="0.35"/>
+        <!-- far mountains -->
+        <path d="M0 520 L120 380 L200 450 L310 320 L420 420 L520 300 L640 400 L720 340 L800 420 L800 900 L0 900 Z" fill="url(#mountainFar)"/>
+        <!-- near mountains -->
+        <path d="M0 620 L90 500 L180 580 L280 440 L390 560 L500 430 L610 540 L700 460 L800 560 L800 900 L0 900 Z" fill="url(#mountainNear)"/>
+        <!-- castle silhouette -->
+        <g fill="#0b1420">
+          <rect x="340" y="480" width="120" height="140"/>
+          <rect x="320" y="450" width="30" height="170"/>
+          <rect x="450" y="460" width="28" height="160"/>
+          <rect x="355" y="420" width="22" height="60"/>
+          <rect x="400" y="400" width="26" height="80"/>
+          <rect x="430" y="430" width="20" height="50"/>
+          <!-- battlements -->
+          <rect x="340" y="468" width="14" height="14"/><rect x="362" y="468" width="14" height="14"/>
+          <rect x="384" y="468" width="14" height="14"/><rect x="406" y="468" width="14" height="14"/>
+          <rect x="428" y="468" width="14" height="14"/><rect x="446" y="468" width="14" height="14"/>
+          <!-- tower tops -->
+          <polygon points="320,450 335,420 350,450"/>
+          <polygon points="450,460 464,430 478,460"/>
+          <polygon points="355,420 366,395 377,420"/>
+          <polygon points="400,400 413,370 426,400"/>
+        </g>
+        <!-- glowing windows -->
+        <g fill="url(#castleLight)">
+          <rect x="358" y="510" width="12" height="16" rx="1"/>
+          <rect x="388" y="510" width="12" height="16" rx="1"/>
+          <rect x="418" y="510" width="12" height="16" rx="1"/>
+          <rect x="373" y="545" width="14" height="20" rx="1"/>
+          <rect x="403" y="545" width="14" height="20" rx="1"/>
+          <rect x="388" y="580" width="18" height="28" rx="2"/>
+        </g>
+        <!-- foreground ridge -->
+        <path d="M0 720 Q200 680 400 740 T800 700 L800 900 L0 900 Z" fill="#081018" opacity="0.85"/>
+        <!-- mist -->
+        <ellipse cx="400" cy="680" rx="380" ry="40" fill="#9babba" opacity="0.06"/>
+      </svg>
+      <div class="landing-art-fade"></div>
+    </div>
+
+    <div class="landing-copy">
+      <p class="eyebrow" data-i18n="eyebrow">Voice-led adventures · Shared on your TV</p>
+      <h1 id="landing-title" class="editorial-title" data-i18n="landingTitle">Your next great story starts on the sofa.</h1>
+      <p class="lede" data-i18n="landingLede">Pick a world, decide together, roll the dice, and take home a comic of the night. An Alexa+ companion with a browser voice demo for the living room.</p>
+
+      <div class="provider-badge" id="provider-badge" role="status" aria-live="polite">
+        <span class="badge-dot" aria-hidden="true"></span>
+        <span id="provider-label" data-i18n="demoMode">Demo mode · no keys needed</span>
+      </div>
+
+      <button type="button" class="btn host-launch" id="host-mode-btn">
+        <span data-i18n="localHostLaunch">Play with the local Game Master</span>
+        <span class="host-launch-note" data-i18n="localHostNote">Ollama · real MCP tools · browser voice simulation</span>
+      </button>
+
+      <form id="start-form" class="start-form" novalidate>
+        <fieldset class="world-fieldset">
+          <legend data-i18n="chooseWorld">Choose a world</legend>
+          <div class="world-grid" role="radiogroup" aria-label="World">
+            <label class="world-card">
+              <input type="radio" name="world" value="fantasy" checked />
+              <span class="world-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48" width="40" height="40"><path fill="currentColor" d="M24 4l4 12h12l-10 8 4 12-10-7-10 7 4-12-10-8h12z" opacity=".35"/><path fill="none" stroke="currentColor" stroke-width="1.5" d="M8 36c4-8 12-12 16-12s12 4 16 12"/><rect x="20" y="18" width="8" height="14" rx="1" fill="currentColor" opacity=".7"/><path d="M18 18h12v-2l-6-6-6 6z" fill="currentColor"/></svg>
+              </span>
+              <span class="world-name" data-i18n="worldFantasy">Fantasy</span>
+              <span class="world-desc" data-i18n="worldFantasyDesc">Castles, quests &amp; moonlit roads</span>
+            </label>
+            <label class="world-card">
+              <input type="radio" name="world" value="space" />
+              <span class="world-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48" width="40" height="40"><circle cx="24" cy="24" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><ellipse cx="24" cy="24" rx="18" ry="6" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".7"/><circle cx="36" cy="14" r="2" fill="currentColor"/><circle cx="12" cy="32" r="1.5" fill="currentColor" opacity=".6"/></svg>
+              </span>
+              <span class="world-name" data-i18n="worldSpace">Space</span>
+              <span class="world-desc" data-i18n="worldSpaceDesc">Stars, signals &amp; strange ships</span>
+            </label>
+            <label class="world-card">
+              <input type="radio" name="world" value="mystery" />
+              <span class="world-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48" width="40" height="40"><circle cx="22" cy="20" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M22 30v6M18 40h8" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M18 18c0-3 2-5 4-5s3 1.5 3 3-1 2.5-3 3v3" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="22" cy="27" r="1.2" fill="currentColor"/></svg>
+              </span>
+              <span class="world-name" data-i18n="worldMystery">Mystery</span>
+              <span class="world-desc" data-i18n="worldMysteryDesc">Clues, shadows &amp; secrets</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="form-row">
+          <div class="lang-toggle" role="group" aria-label="Language">
+            <button type="button" class="lang-btn is-active" data-lang="en" aria-pressed="true">EN</button>
+            <button type="button" class="lang-btn" data-lang="es" aria-pressed="false">ES</button>
+          </div>
+          <label class="party-label">
+            <span data-i18n="partyNames">Party names</span>
+            <input id="players-input" type="text" name="players" value="Mira, Leo" maxlength="200" autocomplete="off" data-i18n-placeholder="partyPlaceholder" placeholder="Mira, Leo, Sam" />
+          </label>
+        </div>
+
+        <button type="submit" class="cta" id="begin-btn">
+          <span data-i18n="beginAdventure">Begin adventure</span>
+          <svg class="cta-arrow" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M5 12h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+        </button>
+      </form>
+
+      <p class="resume-hint" id="resume-hint" hidden>
+        <button type="button" class="text-btn" id="resume-btn" data-i18n="resumeSession">Resume last adventure</button>
+        <span aria-hidden="true"> · </span>
+        <button type="button" class="text-btn muted" id="discard-resume-btn" data-i18n="startFresh">Start fresh</button>
+      </p>
+    </div>
+  </section>
+
+  <!-- ─── Local conversational host ─── -->
+  <section id="host-panel" class="host-panel" hidden aria-labelledby="host-title">
+    <header class="host-topbar">
+      <div>
+        <p class="eyebrow" data-i18n="localHostEyebrow">Local conversational host</p>
+        <h1 id="host-title" class="host-title">RPG Night</h1>
+      </div>
+      <div class="host-header-actions">
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button type="button" class="lang-btn is-active" data-lang="en" aria-pressed="true">EN</button>
+          <button type="button" class="lang-btn" data-lang="es" aria-pressed="false">ES</button>
+        </div>
+        <span id="host-status" class="host-status" role="status" aria-live="polite" data-state="idle">Ready</span>
+        <button type="button" class="btn secondary" id="host-back-btn" data-i18n="backToStart">Back</button>
+      </div>
+    </header>
+    <main id="host-main" class="host-main">
+      <div class="host-story-card">
+        <p class="host-scene-label" id="host-scene-label" data-i18n="hostWelcome">Your Game Master is ready</p>
+        <p id="host-narration" class="host-narration" aria-live="polite"></p>
+        <p id="host-question" class="host-question" hidden></p>
+        <div id="host-choices" class="host-choices" role="group" aria-label="Available choices"></div>
+        <div class="host-meta-row">
+          <p id="host-inventory" class="host-inventory" hidden></p>
+          <p id="host-check" class="host-check" hidden></p>
+        </div>
+      </div>
+      <section class="host-conversation" aria-label="Conversation with the Game Master">
+        <div id="host-transcript" class="host-transcript" role="log" aria-live="polite" aria-relevant="additions text"></div>
+        <form id="host-turn-form" class="host-turn-form" autocomplete="off">
+          <label class="sr-only" for="host-input" data-i18n="customAction">Your action</label>
+          <input id="host-input" type="text" maxlength="1200" data-i18n-placeholder="hostInputPlaceholder" placeholder="Say what you want to do…" />
+          <button type="button" class="btn secondary" id="host-mic-btn" data-i18n="speak">Speak</button>
+          <button type="submit" class="btn" id="host-send-btn" data-i18n="sendAction">Send</button>
+        </form>
+      </section>
+      <footer class="host-controls">
+        <span id="host-mode-badge" class="host-mode-badge" data-i18n="localHostBadge">Local Ollama host · not connected to an Echo</span>
+        <div class="host-control-actions">
+          <button type="button" class="btn secondary" id="host-tts-btn" aria-pressed="false" data-i18n="enableNarration">Enable narration</button>
+          <button type="button" class="btn secondary" id="host-tv-btn" hidden data-i18n="hostOpenTv">Open shared screen</button>
+          <button type="button" class="btn secondary" id="host-pause-btn" data-i18n="pauseGame">Pause</button>
+          <button type="button" class="btn" id="host-new-btn" hidden data-i18n="newAdventure">New adventure</button>
+        </div>
+      </footer>
+      <p id="host-error" class="host-error" role="alert" hidden></p>
+    </main>
+  </section>
+
+  <!-- ─── Read-only second screen for local conversational host ─── -->
+  <section id="host-tv" class="host-tv" hidden aria-labelledby="host-tv-title">
+    <header class="host-tv-topbar">
+      <div><p class="eyebrow">RPG Night · <span id="host-tv-live">Connecting…</span></p><h1 id="host-tv-title">Your story, together</h1></div>
+      <div class="host-tv-actions">
+        <a id="host-tv-comic" class="btn secondary" data-i18n="downloadSvg">Download SVG</a>
+        <button type="button" id="host-tv-print" class="btn" data-i18n="printPdf">Print / Save PDF</button>
+      </div>
+    </header>
+    <main class="host-tv-main">
+      <section class="host-tv-current" aria-live="polite">
+        <p id="host-tv-phase" class="eyebrow"></p>
+        <p id="host-tv-waiting" class="host-tv-waiting">Waiting for the group to start a story…</p>
+        <h2 id="host-tv-scene"></h2>
+        <p id="host-tv-narration" class="host-tv-narration"></p>
+        <p id="host-tv-check" class="host-tv-check" hidden></p>
+        <ul id="host-tv-choices" class="host-tv-choices"></ul>
+        <p id="host-tv-inventory" class="host-tv-inventory"></p>
+      </section>
+      <section class="host-tv-history" aria-label="Played story panels">
+        <h2 id="host-tv-history-title">The story so far</h2>
+        <div id="host-tv-panels" class="host-tv-panels"></div>
+      </section>
+    </main>
+  </section>
+
+  <!-- ─── App shell (play + comic) ─── -->
+  <div id="app" class="app" hidden>
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="brand">RPG Night</span>
+        <span class="live-pill" id="live-status" data-state="connecting" role="status" aria-live="polite">
+          <span class="live-dot" aria-hidden="true"></span>
+          <span id="live-label" data-i18n="connecting">Connecting…</span>
+        </span>
+      </div>
+      <nav class="tabs" role="tablist" aria-label="View">
+        <button type="button" role="tab" id="tab-story" class="tab is-active" aria-selected="true" aria-controls="view-story" data-i18n="tabStory">Story</button>
+        <button type="button" role="tab" id="tab-comic" class="tab" aria-selected="false" aria-controls="view-comic" data-i18n="tabComic">Comic</button>
+      </nav>
+      <div class="topbar-actions">
+        <button type="button" class="icon-btn" id="share-btn" data-i18n-aria="shareLink" aria-label="Copy TV link">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.6" d="M10 13a5 5 0 007.07 0l2.83-2.83a5 5 0 00-7.07-7.07L11 4.76"/><path fill="none" stroke="currentColor" stroke-width="1.6" d="M14 11a5 5 0 00-7.07 0L4.1 13.83a5 5 0 007.07 7.07L13 19.24"/></svg>
+        </button>
+        <button type="button" class="icon-btn" id="fullscreen-btn" data-i18n-aria="fullscreen" aria-label="Fullscreen">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.6" d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- Story view -->
+      <section id="view-story" class="view-story" role="tabpanel" aria-labelledby="tab-story">
+        <div class="scene-stage">
+          <figure class="scene-frame">
+            <img id="scene-image" class="scene-image" alt="" width="960" height="540" />
+            <figcaption class="scene-chapter">
+              <span id="chapter-badge" class="chapter-badge">1 / 8</span>
+            </figcaption>
+          </figure>
+
+          <div class="scene-body">
+            <div class="scene-meta">
+              <h2 id="scene-title" class="scene-title"></h2>
+              <p id="scene-narration" class="scene-narration" aria-live="polite"></p>
+              <p id="scene-outcome" class="scene-outcome" hidden></p>
+            </div>
+
+            <aside class="party-panel" aria-label="Party">
+              <div class="panel-block">
+                <h3 data-i18n="players">Players</h3>
+                <ul id="players-list" class="chip-list"></ul>
+              </div>
+              <div class="panel-block">
+                <h3 data-i18n="inventory">Inventory</h3>
+                <ul id="inventory-list" class="chip-list"></ul>
+                <p id="inventory-empty" class="muted-note" data-i18n="inventoryEmpty">Nothing yet</p>
+              </div>
+              <div class="panel-block roll-block" id="roll-block" hidden>
+                <h3 data-i18n="lastRoll">Last roll</h3>
+                <p id="roll-display" class="roll-display" aria-live="polite"></p>
+              </div>
+              <div id="warnings" class="warnings" role="status" aria-live="polite" hidden></div>
+            </aside>
+          </div>
+        </div>
+
+        <div class="controls-bar">
+          <div class="chapter-nav" role="group" aria-label="Chapters">
+            <button type="button" class="icon-btn" id="prev-chapter" data-i18n-aria="prevChapter" aria-label="Previous chapter" disabled>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M15 6l-6 6 6 6"/></svg>
+            </button>
+            <span id="chapter-label" class="chapter-label"></span>
+            <button type="button" class="icon-btn" id="next-chapter" data-i18n-aria="nextChapter" aria-label="Next chapter" disabled>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M9 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+
+          <div id="choices" class="choices" role="group" aria-label="Choices"></div>
+
+          <form id="action-form" class="action-form" autocomplete="off">
+            <label class="sr-only" for="action-input" data-i18n="customAction">Custom action</label>
+            <input id="action-input" type="text" maxlength="600" data-i18n-placeholder="actionPlaceholder" placeholder="Describe what you do…" />
+            <button type="submit" class="btn secondary" id="action-btn" data-i18n="sendAction">Send</button>
+          </form>
+
+          <div class="tools-row">
+            <button type="button" class="btn secondary" id="dice-btn" data-i18n="rollD20">Roll d20</button>
+            <button type="button" class="btn secondary" id="mic-btn" data-i18n-aria="microphone" aria-label="Voice input" aria-pressed="false">
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v5a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-5 9a1 1 0 01-1-1v-2h2v2a1 1 0 01-1 1z"/></svg>
+              <span data-i18n="speak">Speak</span>
+            </button>
+            <button type="button" class="btn secondary" id="tts-btn" aria-pressed="false">
+              <span data-i18n="enableNarration">Enable narration</span>
+            </button>
+            <button type="button" class="btn ghost danger" id="end-btn" data-i18n="endAdventure">End adventure</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Comic view -->
+      <section id="view-comic" class="view-comic" role="tabpanel" aria-labelledby="tab-comic" hidden>
+        <div class="comic-toolbar print-hide">
+          <h2 id="comic-heading" class="comic-heading" data-i18n="comicTitle">Your story, together</h2>
+          <div class="comic-actions">
+            <button type="button" class="btn secondary" id="download-svg" data-i18n="downloadSvg">Download SVG</button>
+            <button type="button" class="btn secondary" id="download-png" data-i18n="downloadPng">Download PNG</button>
+            <button type="button" class="btn secondary" id="print-btn" data-i18n="printPdf">Print / Save PDF</button>
+            <button type="button" class="btn" id="new-adventure-btn" data-i18n="newAdventure" hidden>New adventure</button>
+          </div>
+        </div>
+        <div id="comic-grid" class="comic-grid" aria-live="polite"></div>
+        <p id="comic-empty" class="comic-empty muted-note" data-i18n="comicEmpty" hidden>Chapters will appear here as your story unfolds.</p>
+      </section>
+    </main>
+  </div>
+
+  <!-- End confirmation dialog -->
+  <dialog id="end-dialog" class="dialog" aria-labelledby="end-dialog-title">
+    <form method="dialog" class="dialog-body">
+      <h2 id="end-dialog-title" data-i18n="endConfirmTitle">End this adventure?</h2>
+      <p data-i18n="endConfirmBody">Bring the story to a close and take home a comic of the night.</p>
+      <div class="dialog-actions">
+        <button type="submit" value="cancel" class="btn secondary" data-i18n="cancel">Cancel</button>
+        <button type="submit" value="confirm" class="btn danger" data-i18n="confirmEnd">End adventure</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Busy overlay -->
+  <div id="busy" class="busy" hidden aria-hidden="true">
+    <div class="busy-spinner" aria-hidden="true"></div>
+    <p id="busy-label" data-i18n="working">Working…</p>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -1,3 +1,8 @@
 node_modules/
 .env
 dist/
+data/
+.work/
+playwright-report/
+test-results/
+*.log

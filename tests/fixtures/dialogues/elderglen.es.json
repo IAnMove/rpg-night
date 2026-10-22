@@ -1,0 +1,75 @@
+{
+  "fixture_version": 1,
+  "adventure_id": "elderglen",
+  "locale": "es",
+  "purpose": "Diálogo sintético para evaluar el host; compara intención y efectos de estado, no frases exactas.",
+  "scenarios": [
+    {
+      "id": "ordinal-choice",
+      "setup": "Una partida recién iniciada está en arrival y muestra dos opciones en orden: visit-green, follow-bank.",
+      "turns": [{ "player": "1", "expected": { "interaction": { "kind": "choice", "choice_id": "visit-green" }, "state": "avanzar una vez a green; no tirar" } }],
+      "pass_criteria": ["Resolver el ordinal hablado según el orden de opciones mostrado.", "Enviar una sola opción y resumir la escena green recibida."]
+    },
+    {
+      "id": "paraphrase-social",
+      "setup": "En green, el jugador quiere escuchar a la guardiana y a los vecinos antes de decidir.",
+      "turns": [{ "player": "Primero escuchemos qué necesitan Elin y los vecinos antes de hacer un plan.", "expected": { "interaction": { "kind": "choice", "choice_id": "ask-warden" }, "effects": { "trust": 1 }, "next_scene": "lantern-room" } }],
+      "pass_criteria": ["Asignar la paráfrasis a la opción actual que corresponde.", "Aplicar su efecto una vez y respetar la intención sin inventar hechos."]
+    },
+    {
+      "id": "free-action-keeper",
+      "setup": "En green, la affordance actual speak-with-warden tiene como objetivo warden-elin y permite listen-first o share-observation.",
+      "turns": [{ "player": "Escucho las preocupaciones de Elin y pregunto a los vecinos qué les importa.", "expected": { "interaction": { "kind": "free_action", "affordance_id": "speak-with-warden", "target_id": "warden-elin", "approach_id": "listen-first" }, "resolution_choice_id": "ask-warden", "effects": { "trust": 1 }, "next_scene": "lantern-room" } }],
+      "pass_criteria": ["Vincular la acción libre a la affordance e IDs permitidas.", "Resolver solo mediante su opción autorizada; no inventar efectos ni destinos."]
+    },
+    {
+      "id": "free-action-prism-route",
+      "setup": "En ferry, el grupo puede pedirle a Oren que cruce o buscar en el cobertizo. Elige el cobertizo, obtiene glass-prism y llega a bell-tower.",
+      "turns": [
+        { "player": "Busquemos en el cobertizo algo que ayude a que el aviso llegue más lejos.", "expected": { "interaction": { "kind": "free_action", "affordance_id": "search-ferry-shed", "target_id": "ferry-shed", "approach_id": "search-shed" }, "resolution_choice_id": "search-shed", "inventory_add": "glass-prism", "next_scene": "lantern-room" } },
+        { "player": "En la torre, coloquemos el prisma en el mecanismo de la campana antes de tirar de la palanca.", "expected": { "interaction": { "kind": "free_action", "affordance_id": "align-prism-with-lever", "target_id": "release-lever", "item_id": "glass-prism", "approach_id": "fit-prism" }, "resolution_choice_id": "align-prism", "check_dc": 9, "inventory_remove": "glass-prism", "phase": "awaiting_check" } }
+      ],
+      "pass_criteria": ["La acción libre de buscar en el cobertizo obtiene el objeto previsto.", "La acción específica con el prisma es distinta de la prueba normal de la palanca y usa la dificultad escrita.", "No consumir el prisma ni tirar hasta que el servidor acepte la mutación correspondiente."]
+    },
+    {
+      "id": "close-pending-check",
+      "setup": "La sesión espera resolver una prueba d20 creada por el servidor en bell-tower.",
+      "turns": [{ "player": "Paremos aquí y cerremos la partida.", "expected": { "tool": "end_session", "phase": "ended", "scene_unchanged": true, "pending_check": null, "rolls": 0, "ending_node": false } }],
+      "pass_criteria": ["El cierre explícito cancela la prueba pendiente sin consumir RNG.", "No inventar un desenlace: conservar la escena actual y registrar el cierre."]
+    },
+    {
+      "id": "ambiguous-intent",
+      "setup": "En arrival están disponibles tanto la plaza como la orilla.",
+      "turns": [
+        { "player": "Quizá deberíamos preguntar a la gente, aunque igual es más importante el río.", "expected": { "response": "clarification", "state": "no enviar interacción; revisión y escena sin cambios" } },
+        { "player": "Empecemos preguntando a los vecinos.", "expected": { "interaction": { "kind": "choice", "choice_id": "visit-green" }, "next_scene": "green", "mutations": 1 } }
+      ],
+      "pass_criteria": ["Aclarar las dos intenciones posibles sin elegir por el jugador.", "Solo la respuesta posterior avanza la partida."]
+    },
+    {
+      "id": "read-and-retry-control",
+      "setup": "En bank, tras seguir el río, el inventario está vacío y el ejecutor registra la revisión.",
+      "turns": [
+        { "player": "¿Qué llevamos y qué podemos hacer aquí?", "expected": { "tool": "get_session", "state": "devolver inventario y opciones actuales; sin cambiar la revisión" } },
+        { "player": "Paremos aquí.", "expected": { "tool": "pause_session", "mutations": 1, "scene_change": false } },
+        { "player": "Sigamos. Recuérdanos dónde estamos.", "expected": { "tool": "resume_session then get_session", "mutations": 1, "scene_change": false, "recap": "resumen breve basado en la escena persistida" } }
+      ],
+      "pass_criteria": ["Una lectura no envía una acción ni cambia la revisión del juego.", "Pausar y retomar son controles de estado idempotentes, no decisiones narrativas.", "Retomar usa el estado guardado y no elige una ruta."]
+    },
+    {
+      "id": "object-and-finale",
+      "setup": "El grupo tomó brass-key en archives y llega a lantern-room con el objeto en inventario.",
+      "turns": [
+        { "player": "Usa la llave de latón para volver a encender la linterna de aviso.", "expected": { "interaction": { "kind": "choice", "choice_id": "light-lantern" }, "effects": { "remove_item": "brass-key", "lantern-lit": 1 }, "next_scene": "bell-tower" } },
+        { "player": "En el aliviadero, toca la campana para que el pueblo pueda subir a un lugar seguro.", "expected": { "interaction": { "kind": "choice", "choice_id": "ring-warning" }, "ending": "ending-warning", "ending_reason": "el grupo eligió avisar y refugiarse" } }
+      ],
+      "pass_criteria": ["Exigir y consumir la llave real una sola vez.", "La rama de contratiempo de test-lever sigue llegando a gate.", "Determinar el final con la decisión recibida, sin reescribir lo jugado."]
+    },
+    {
+      "id": "alternate-finale",
+      "setup": "El grupo sigue cualquiera de las rutas y llega a gate tras el contratiempo del d20.",
+      "turns": [{ "player": "Abramos el aliviadero hacia el marjal vacío para proteger las casas.", "expected": { "interaction": { "kind": "choice", "choice_id": "open-spillway" }, "ending": "ending-marsh", "ending_reason": "el grupo decidió desviar el agua" } }],
+      "pass_criteria": ["El contratiempo no elimina la decisión final.", "Narrar el final del marjal según el estado recibido, sin afirmar que se tocó la campana."]
+    }
+  ]
+}

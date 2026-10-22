@@ -1,59 +1,162 @@
-# RPG Night — Alexa+ Game Master with a living TV comic
+# RPG Night
 
-Hackathon: **Build, Ship, Shape: Amazon Developer Hackathon** (Devpost)
-- Site: https://amazonappdev2026.devpost.com/
-- Rules: https://amazonappdev2026.devpost.com/rules
-- FAQ: https://amazonappdev2026.devpost.com/details/faqs
-- **Deadline: Friday Oct 23, 2026, 12:00 PM PT (21:00 Madrid)**. Submit early, you can keep editing until the deadline.
+**Your next great story starts on the sofa.**
 
-## The idea
-A group sits on the sofa. Alexa+ is the Game Master: it narrates a short role-playing adventure,
-players decide out loud, dice are rolled, and **every decision becomes a generated illustration on the TV**.
-At the end, the session is assembled into a **comic** of the game you just played together.
+A cooperative role-playing game for a shared screen. The classic web mode includes a companion TV
+and comic; a separate browser host demonstrates the conversational MCP architecture intended for
+an Alexa+ compatible host. The local browser host is a simulation, not an Alexa integration.
 
-What exists today: voice adventures on Alexa (audio only, fixed script) and text AI RPGs (AI Dungeon).
-What's new here: a *shared living-room* experience, voice-driven, generative story + generative images on the big screen, ending in a keepsake comic.
+## Run in two minutes
 
-## Track
-- Primary: **Alexa+** — a self-hosted **MCP server** (MCP spec >= 2025-11-25). Rules allow simulating the Alexa+ experience in a web app with our own agentic tools.
-- Mini challenge: **AWS Builder** — use Amazon Bedrock (text + image) and/or build with Kiro, and document it.
-- Optional stretch: Fire TV app (the web TV opened in Fire TV's browser is enough for the demo).
+Requires **Node.js 22.12 or later** and npm. No API key, AWS account or cloud service is needed for the demo.
+
+```sh
+git clone https://github.com/IAnMove/rpg-night.git
+cd rpg-night
+npm ci
+npm run dev
+```
+
+Open **http://localhost:3000**. The classic deterministic demo needs no model. For the voice-led
+Game Master, install Ollama and have the configured model available locally, then choose **Local host**.
+That flow sends text or browser speech recognition to the server-side host, which uses Ollama and the
+official MCP client to read and update the adventure. Authored adventures and host conversations support
+English and Spanish; local story preparation is available in both languages. Microphone access and spoken
+narration are optional browser features.
+
+- A safe choice earns trust or an ally. A risky choice uses a d20 against **DC 11**.
+- Roll first to prepare a check, or let the risky choice roll automatically. Each roll is consumed once.
+- A demo adventure runs for six illustrated chapters, including its ending; generative adventures cap at eight.
+- Finish early with **End adventure**, or play through the final chapter.
+- Open **Comic** to download PNG/SVG or use Print → Save as PDF.
+- In the classic game, copy the TV link into another browser tab. Both screens update together over SSE.
+- Reload to resume. Sessions and generated images survive server restarts in `data/`.
+
+**The classic demo mode is intentionally local and deterministic.** Its stories are authored, not
+LLM-generated; illustrations are original procedural SVGs that vary with world, chapter and choice.
+The separate voice-led mode uses a local LLM to interpret player intent, but game state, choices,
+checks and effects remain authoritative in the MCP game service. It can prepare a compact new adventure;
+the generated story is validated before it appears in the catalogue. No remote fonts, stock-image
+services or external runtime assets are needed for the default demo.
+
+## Local conversational host
+
+The voice-led screen is a local simulation of a conversational host. It is **not an Alexa skill**,
+does not connect to an Echo, and does not claim certification or a published Alexa+ integration.
+It uses the following defaults (override in `.env`):
+
+```dotenv
+HOST_MODE=ollama
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=qwen3:4b-instruct-2507-q4_K_M
+RPG_MCP_URL=http://127.0.0.1:3000/mcp
+```
+
+Ollama and the model must already be installed locally; `npm run dev` never downloads them. Set
+`HOST_MODE=disabled` to turn off the conversation panel while retaining the deterministic game and
+MCP service. The server-side host discovers tools with `tools/list` and calls the canonical MCP
+endpoint through the official TypeScript SDK. See [presentation](presentacion.md), the
+[execution plan](plan-ejecucion.md), and [current feasibility and evidence](docs/feasibility.md).
+
+In Local host mode, **Open shared screen** opens a read-only view of the current public turn and played
+story panels. It follows updates over SSE and can download an SVG comic or print it as PDF. The classic
+game's TV/comic is a separate legacy flow; the host screen never reads its private transcript or future
+story nodes. This read-only snapshot, SSE event, and SVG export were also exercised against the real local
+Ollama/MCP host in completed English and Spanish games. Treat a host conversation link like a bearer link:
+anyone with it can see that public story.
+
+## Amazon Bedrock mode
+
+Copy `.env.example` to `.env` (`Copy-Item .env.example .env` in PowerShell) and set:
+
+```dotenv
+PROVIDER=bedrock
+AWS_REGION=us-east-1
+TEXT_MODEL_ID=amazon.nova-lite-v1:0
+IMAGE_MODEL_ID=amazon.nova-canvas-v1:0
+```
+
+Use the AWS SDK's standard credential chain: an AWS profile/SSO session, an IAM role, or environment
+credentials. Do not commit keys. The role needs `bedrock:InvokeModel` for the selected model or inference
+profile. Model availability and access depend on account and region; `TEXT_MODEL_ID` may be an inference
+profile ID/ARN when the model requires one. Images support **Nova Canvas** and **Titan Image Generator**.
+
+Bedrock text uses the [Converse API](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-call.html).
+Illustrations use [Nova Canvas's native image API](https://docs.aws.amazon.com/nova/latest/userguide/code-examples-image.html).
+Each new chapter requests text and one image. Requests incur AWS charges. Existing chapters are reused.
+If either request fails, a visible warning identifies the local demo fallback; the session remains playable.
+The default demo makes **no AWS calls**. Live AWS generation has to be verified with your own credentials.
+
+## MCP / Alexa+ host
+
+Canonical endpoint: **`http://localhost:3000/mcp`**, Streamable HTTP, official TypeScript SDK.
+Protocol **2025-11-25** is supported. Requests are stateless; game state is identified by `session_id`.
+The earlier demo protocol is retained separately at `/mcp/legacy`.
+
+| Tool | Input | Result |
+| --- | --- | --- |
+| `list_adventures` | Locale and optional genre, player count, duration | Public authored adventure summaries |
+| `prepare_adventure` | Premise, locale, preferences, request ID | Queued local Ollama generation; output is schema/graph validated with at most one repair before it is offered |
+| `get_operation_status` | Operation ID | Read pending, ready or failed preparation state |
+| `start_session` | Adventure ID, locale, players, request ID | First validated public turn |
+| `get_session` | Session ID | Latest public turn without mutation |
+| `submit_action` | Session ID, revision, request ID, typed interaction | One validated action or recoverable result |
+| `resolve_check` | Session ID, check ID, revision, request ID | Server-side random check and public result |
+| `end_session` | Session ID, revision, request ID | Closes the current session safely |
+
+The legacy endpoint exposes the five earlier demo tools. Do not configure a host against it for the
+voice-led v2 flow. See [MCP contract and host routes](docs/mcp-contract.md).
+
+Generated adventures use the configured local Ollama model and are saved under `DATA_DIR/generated-adventures`.
+Preparation is asynchronous; the local host polls its conversation-bound operation and never starts a story
+without an explicit player choice. Real generation and the full 20-scenario host evaluation have passed in
+English and Spanish; narrative quality still needs human review. `OLLAMA_GENERATION_TIMEOUT_MS` defaults to
+120 seconds per generation attempt (a single repair may use another attempt); the durable operation expires
+after five minutes. See [generation verification](docs/generation-live-check.md) and the [review report](docs/review.md).
+
+```json
+{ "mcpServers": { "rpg-night": { "url": "http://localhost:3000/mcp" } } }
+```
+
+Configuration varies by MCP host. This repository does not claim a published Alexa skill or a certified
+Alexa+ integration. Connecting from a remote host requires a reachable **HTTPS** deployment and that
+host's registration/access process. See [deployment notes](docs/DEPLOYMENT.md).
+
+## Commands and verification
+
+```sh
+npm run dev        # One server: API, MCP, SSE and Vite frontend
+npm run check      # Strict TypeScript check
+npm test           # Game, persistence, HTTP, SSE and real MCP client integration
+npm run build     # Production frontend and compiled Node server
+npm start         # Serve the production build
+npm run eval:host:v2 # Opt-in: 20 real Ollama/MCP host scenarios in English and Spanish
+```
+
+Browser tests and their setup are described in [testing notes](docs/TESTING.md).
 
 ## Architecture
-```
-voice (browser mic / MCP client simulating Alexa+)
-        │
-        ▼
-mcp-server/  ── tools: start_adventure, player_action, roll_dice, get_scene, end_session
-        │        state: story, characters, inventory, scene list
-        ├── LLM (Bedrock) writes next scene + choices
-        ├── image model (Bedrock) illustrates the scene
-        ▼
-web-tv/  ── full-screen page: scene image, narration text, choices, dice, players
-            final screen: comic (panels + captions), downloadable PNG/PDF
+
+```text
+Browser speech / text → HTTP → Ollama host → official MCP client → MCP game service
+                                                       │
+                                    Atomic JSON state + public turn projection
+                                                       │
+                            Classic UI / SSE TV / comic PNG, SVG and print-PDF
 ```
 
-## MVP (must have by deadline)
-1. MCP server with the 5 tools above, session state in memory/JSON.
-2. Scene generation (text) + one image per scene.
-3. Web TV page that updates live (SSE or WebSocket) when a new scene arrives.
-4. Voice input in the browser (Web Speech API) calling the MCP tools; TTS narration.
-5. End-of-session comic page (4–8 panels).
-6. English by default; Spanish works too (bonus).
+`mcp-server/` contains the game, validated HTTP/MCP endpoints, providers and exports.
+`web-tv/` is the TypeScript screen and voice client. `shared/` defines their data contract.
+The per-session queue rejects stale choices and prevents simultaneous screens from duplicating a chapter.
+The demo is designed for a trusted living room, with loopback binding and same-origin checks by default.
 
-## Submission checklist (Devpost)
-- [ ] Repo: public with an open-source LICENSE (MIT included) **or** private shared with testing@devpost.com and the Amazon reviewers listed on Devpost updates.
-- [ ] Demo video < 3 min on YouTube/Vimeo, public, showing it running.
-- [ ] Setup/run instructions in this README.
-- [ ] Feature description, track + mini-challenge selection.
-- [ ] Product feedback for every Amazon/AWS tool used (required field).
-- [ ] Hit Submit and confirm status "Submitted".
+## Hackathon
 
-## Demo video plan (< 3 min)
-1. 0:00 hook: "Tonight, Alexa is our Game Master."
-2. Friends pick a world; first scene appears on the TV.
-3. Two or three decisions + a dice roll, images appear live.
-4. Ending: the comic of the night on screen.
-5. 15 s of architecture (MCP + Bedrock).
+Originally scoped for **Build, Ship, Shape: Amazon Developer Hackathon**, Alexa+ track and optional
+AWS Builder mini-challenge. See [demo and submission materials](docs/DEMO.md) and the
+[original brief](docs/BRIEF_FOR_AGENT.md). Verify current eligibility against the
+[official rules](https://amazonappdev2026.devpost.com/rules) before submitting.
+Publishing the repository, recording a video, configuring an Alexa+ host and submitting on Devpost are
+separate steps; this code does not perform those actions.
 
-See `docs/` for details.
+MIT licensed. Built with Codex and Grok; all executable changes are reviewed and tested locally.

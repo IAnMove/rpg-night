@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "session_id": "11111111-1111-4111-8111-111111111111",
+  "revision": 1,
+  "view_revision": 1,
+  "phase": "awaiting_choice",
+  "scene_id": "opening",
+  "narration": "A quiet path divides in two.",
+  "choices": [
+    { "id": "left-path", "label": "Take the left path" },
+    { "id": "right-path", "label": "Take the right path" }
+  ],
+  "affordances": [],
+  "pending_check": null,
+  "recent_outcome": null,
+  "inventory": [],
+  "recap": "The group arrived at a fork.",
+  "next_expected_input": "Choose an action.",
+  "visual_status": "ready"
+}

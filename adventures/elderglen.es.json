@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "id": "elderglen",
+  "version": 1,
+  "title": "La campana bajo Elderglen",
+  "locale": "es",
+  "genre": "misterio acogedor",
+  "tone": "asombro, comunidad, peligro leve",
+  "duration_minutes": 15,
+  "players": { "min": 1, "max": 4 },
+  "content_limits": ["Sin violencia gráfica", "Sin daño a menores", "Sin pérdida forzada de la capacidad de decidir"],
+  "objective": "Averigua por qué se ha silenciado la antigua campana de inundaciones de Elderglen y decide cómo responderá el pueblo a la crecida.",
+  "characters": [
+    { "id": "warden-elin", "name": "Guardiana Elin", "description": "Una responsable práctica que quiere escuchar a todos antes de decidir." },
+    { "id": "ferryman-oren", "name": "Oren", "description": "Un barquero paciente que conoce los antiguos pasos del río." },
+    { "id": "mara", "name": "Mara", "description": "Una archivera que protege los registros de crecidas de Elderglen." }
+  ],
+  "items": [
+    { "id": "brass-key", "name": "Llave de latón", "description": "Una llave ancha y gastada por el río que encaja en la linterna bajo la campana." },
+    { "id": "glass-prism", "name": "Prisma de vidrio", "description": "Un prisma pequeño que refleja incluso una luz tenue." }
+  ],
+  "variables": {
+    "trust": { "initial": 0, "min": 0, "max": 3 },
+    "lantern-lit": { "initial": 0, "min": 0, "max": 1 },
+    "bell-signal": { "initial": 0, "min": 0, "max": 1 }
+  },
+  "initial_node_id": "arrival",
+  "nodes": [
+    {
+      "id": "arrival", "kind": "scene", "title": "El camino del río", "narration": "La lluvia perlada cubre el letrero a la entrada de Elderglen. Abajo, el río supera las antiguas marcas de crecida y la campana de aviso sigue en silencio.", "secrets": ["La campana calla porque el mecanismo de la linterna está atascado, no porque se haya roto."],
+      "choices": [
+        { "id": "visit-green", "label": "Ir a la plaza del pueblo", "action": "Preguntar a los vecinos qué han visto", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "green" } },
+        { "id": "follow-bank", "label": "Seguir la orilla", "action": "Buscar señales junto al agua", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "bank" } }
+      ]
+    },
+    {
+      "id": "green", "kind": "scene", "title": "Voces en la plaza", "narration": "La guardiana Elin escucha bajo un toldo mientras los vecinos comparan la crecida con las marcas de un poste de piedra. Nadie sabe si conviene tocar la campana o abrir el antiguo aliviadero.", "secrets": ["Elin apoyará mejor un plan si el grupo escucha las preocupaciones de los vecinos antes de proponerlo."],
+      "affordances": [{ "id": "speak-with-warden", "resolution_choice_id": "ask-warden", "label": "Hablar con la guardiana Elin", "summary": "Escuchar sus preocupaciones e invitarla a buscar una respuesta práctica.", "targets": [{ "id": "warden-elin", "label": "Guardiana Elin" }], "item_ids": [], "approaches": [{ "id": "listen-first", "label": "Escuchar primero" }, { "id": "share-observation", "label": "Compartir una observación" }] }],
+      "choices": [
+        { "id": "ask-warden", "label": "Preguntar a Elin qué necesita el pueblo", "action": "Escuchar a Elin y a los vecinos antes de elegir un plan", "conditions": [], "effects": [{ "kind": "increment_variable", "variable_id": "trust", "amount": 1 }], "transition": { "kind": "direct", "target_node_id": "lantern-room" } },
+        { "id": "offer-ferry-help", "label": "Ofrecer ayuda a Oren en el ferry", "action": "Ayudar a asegurar el ferry para ganarse el cruce", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "ferry" } }
+      ]
+    },
+    {
+      "id": "bank", "kind": "scene", "title": "La orilla marcada por juncos", "narration": "Una hilera de arañazos recientes va desde el agua hasta unos escalones de piedra medio ocultos. Al otro lado de la corriente, el ferry de Oren golpea suavemente contra el amarre.", "secrets": ["Los arañazos señalan el antiguo archivo de crecidas de Elderglen."],
+      "affordances": [{ "id": "inspect-river-marks", "resolution_choice_id": "search-marks", "label": "Examinar las marcas del río", "summary": "Comparar los arañazos recientes con los antiguos escalones de crecida.", "targets": [{ "id": "stone-stair", "label": "Escalera de piedra" }], "item_ids": [], "approaches": [{ "id": "trace-line", "label": "Seguir la línea" }, { "id": "compare-water", "label": "Comparar el nivel del agua" }] }],
+      "choices": [
+        { "id": "search-marks", "label": "Seguir los arañazos hasta la escalera", "action": "Buscar pistas en la antigua escalera de crecida", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "archives" } },
+        { "id": "hail-oren", "label": "Llamar a Oren en el ferry", "action": "Pedir al barquero que os lleve al otro lado", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "ferry" } }
+      ]
+    },
+    {
+      "id": "archives", "kind": "scene", "title": "El archivo de crecidas", "narration": "Tras la escalera, una sala de piedra seca guarda mapas y registros del nivel del agua. Junto al dibujo de una linterna bajo la torre hay una llave de latón.", "secrets": ["La llave abre el mecanismo de la linterna de la torre; el prisma está guardado en el cobertizo del ferry."],
+      "affordances": [{ "id": "search-ledgers", "resolution_choice_id": "take-key", "label": "Buscar en el archivo", "summary": "Consultar los registros para hallar algo útil para la linterna apagada.", "targets": [{ "id": "flood-ledger", "label": "Registro de crecidas" }], "item_ids": [], "approaches": [{ "id": "check-drawing", "label": "Revisar el dibujo" }, { "id": "compare-marks", "label": "Comparar las marcas" }] }],
+      "choices": [
+        { "id": "take-key", "label": "Llevarse la llave de latón", "action": "Tomar la llave indicada en el dibujo de la linterna", "conditions": [], "effects": [{ "kind": "add_item", "item_id": "brass-key" }], "transition": { "kind": "direct", "target_node_id": "lantern-room" } },
+        { "id": "leave-record", "label": "Copiar las marcas y dejar la llave", "action": "Anotar el nivel del río y continuar hacia el ferry", "conditions": [], "effects": [{ "kind": "increment_variable", "variable_id": "trust", "amount": 1 }], "transition": { "kind": "direct", "target_node_id": "ferry" } }
+      ]
+    },
+    {
+      "id": "ferry", "kind": "scene", "title": "El ferry de Oren", "narration": "Oren sujeta la barca con una mano y señala la torre con la otra. El cobertizo de este lado no tiene llave, aunque el agua empieza a cubrir el suelo.", "secrets": ["Un prisma de vidrio del cobertizo puede ayudar a que la linterna de la torre lleve el aviso más lejos."],
+      "affordances": [
+        { "id": "ask-oren-route", "resolution_choice_id": "ask-oren", "label": "Preguntar a Oren por el cruce", "summary": "Pedir a Oren que guíe al grupo hasta la torre.", "targets": [{ "id": "ferryman-oren", "label": "Oren" }], "item_ids": [], "approaches": [{ "id": "ask-route", "label": "Preguntar por la ruta" }] },
+        { "id": "search-ferry-shed", "resolution_choice_id": "search-shed", "label": "Buscar en el cobertizo", "summary": "Encontrar el prisma de vidrio antes de cruzar a la torre.", "targets": [{ "id": "ferry-shed", "label": "Cobertizo del ferry" }], "item_ids": [], "approaches": [{ "id": "search-shed", "label": "Buscar en el cobertizo" }] }
+      ],
+      "choices": [
+        { "id": "ask-oren", "label": "Pedir a Oren que os guíe", "action": "Cruzar con cuidado con la ayuda de Oren", "conditions": [], "effects": [{ "kind": "increment_variable", "variable_id": "trust", "amount": 1 }], "transition": { "kind": "direct", "target_node_id": "bell-tower" } },
+        { "id": "search-shed", "label": "Revisar el cobertizo antes de cruzar", "action": "Encontrar un objeto útil y continuar a la torre", "conditions": [], "effects": [{ "kind": "add_item", "item_id": "glass-prism" }], "transition": { "kind": "direct", "target_node_id": "lantern-room" } }
+      ]
+    },
+    {
+      "id": "lantern-room", "kind": "scene", "title": "Bajo la campana", "narration": "La puerta inferior de la torre da a una angosta sala de linterna. El mecanismo de latón no se mueve y una ventana estrecha mira hacia los tejados y el camino del río.", "secrets": ["La llave de latón vuelve a encender la linterna; el prisma hace que su señal llegue más lejos."],
+      "affordances": [{ "id": "use-brass-key", "resolution_choice_id": "light-lantern", "label": "Usar la llave de latón", "summary": "Encajar la llave en el mecanismo y devolver la luz a la linterna.", "targets": [{ "id": "lantern-housing", "label": "Mecanismo de la linterna" }], "item_ids": ["brass-key"], "approaches": [{ "id": "turn-key", "label": "Girar la llave" }] }],
+      "choices": [
+        { "id": "light-lantern", "label": "Encender la linterna con la llave", "action": "Abrir y volver a encender la linterna de aviso", "conditions": [{ "kind": "has_item", "item_id": "brass-key" }], "effects": [{ "kind": "remove_item", "item_id": "brass-key" }, { "kind": "set_variable", "variable_id": "lantern-lit", "value": 1 }], "transition": { "kind": "direct", "target_node_id": "bell-tower" } },
+        { "id": "carry-message", "label": "Llevar el dibujo hasta la escalera", "action": "Mostrar al encargado de la torre el dibujo del archivo", "conditions": [], "effects": [{ "kind": "increment_variable", "variable_id": "trust", "amount": 1 }], "transition": { "kind": "direct", "target_node_id": "bell-tower" } }
+      ]
+    },
+    {
+      "id": "bell-tower", "kind": "scene", "title": "La campana en silencio", "narration": "En lo alto de la torre, la gran campana cuelga sobre el valle. La palanca de liberación está dura; abajo, la luz de la linterna y las ventanas del pueblo brillan bajo la lluvia.", "secrets": ["Un contratiempo puede dejar débil el aviso, pero aún se podrá decidir qué hacer con el aliviadero."],
+      "affordances": [
+        { "id": "work-release-lever", "resolution_choice_id": "test-lever", "label": "Mover la palanca", "summary": "Tirar del mecanismo para liberar la campana.", "targets": [{ "id": "release-lever", "label": "Palanca de liberación" }], "item_ids": [], "approaches": [{ "id": "steady-pull", "label": "Tirar con firmeza" }] },
+        { "id": "align-prism-with-lever", "resolution_choice_id": "align-prism", "label": "Alinear el prisma", "summary": "Colocar el prisma para que la señal de la campana llegue más lejos.", "targets": [{ "id": "release-lever", "label": "Palanca de liberación" }], "item_ids": ["glass-prism"], "approaches": [{ "id": "fit-prism", "label": "Colocar el prisma" }] }
+      ],
+      "choices": [
+        { "id": "test-lever", "label": "Probar la palanca atascada", "action": "Hacer una prueba de d20 para liberar el mecanismo", "conditions": [{ "kind": "lacks_item", "item_id": "glass-prism" }], "effects": [], "transition": { "kind": "check", "sides": 20, "difficulty_class": 11, "success_node_id": "gate", "setback_node_id": "gate", "success_effects": [{ "kind": "set_variable", "variable_id": "bell-signal", "value": 1 }], "setback_effects": [{ "kind": "set_variable", "variable_id": "bell-signal", "value": 0 }] } },
+        { "id": "descend-to-gate", "label": "Bajar hasta la compuerta", "action": "Dejar la palanca y decidir cómo guiar el agua", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "gate" } },
+        { "id": "align-prism", "label": "Alinear el prisma antes de probar la campana", "action": "Usar el prisma de vidrio para que la señal de la campana llegue más lejos", "conditions": [{ "kind": "has_item", "item_id": "glass-prism" }], "effects": [{ "kind": "remove_item", "item_id": "glass-prism" }], "transition": { "kind": "check", "sides": 20, "difficulty_class": 9, "success_node_id": "gate", "setback_node_id": "gate", "success_effects": [{ "kind": "set_variable", "variable_id": "bell-signal", "value": 1 }], "setback_effects": [{ "kind": "set_variable", "variable_id": "bell-signal", "value": 0 }] } }
+      ]
+    },
+    {
+      "id": "gate", "kind": "scene", "title": "La decisión del aliviadero", "narration": "La antigua compuerta separa el río de los campos bajos. Desde aquí podéis tocar la campana para que el pueblo busque refugio o abrir el aliviadero y desviar la crecida hacia el marjal vacío.", "secrets": ["El marjal puede absorber esta crecida; abrir el aliviadero protege las casas, pero alterará el humedal durante una temporada."],
+      "affordances": [
+        { "id": "open-spillway", "resolution_choice_id": "open-spillway", "label": "Abrir el aliviadero", "summary": "Desviar la crecida hacia el humedal para proteger las casas de Elderglen.", "targets": [{ "id": "spillway-gate", "label": "Compuerta del aliviadero" }], "item_ids": [], "approaches": [{ "id": "open-flow", "label": "Abrir hacia el humedal" }] },
+        { "id": "ring-warning", "resolution_choice_id": "ring-warning", "label": "Tocar la campana de aviso", "summary": "Avisar al pueblo para que tenga tiempo de refugiarse por encima del agua.", "targets": [{ "id": "flood-bell", "label": "Campana de crecida" }], "item_ids": [], "approaches": [{ "id": "sound-bell", "label": "Hacer sonar la campana" }] }
+      ],
+      "choices": [
+        { "id": "ring-warning", "label": "Tocar la campana y avisar al pueblo", "action": "Dar tiempo al pueblo para refugiarse por encima del agua", "conditions": [], "effects": [{ "kind": "set_variable", "variable_id": "bell-signal", "value": 1 }], "transition": { "kind": "direct", "target_node_id": "ending-warning" } },
+        { "id": "open-spillway", "label": "Abrir el aliviadero hacia el marjal", "action": "Desviar la crecida lejos de las casas de Elderglen", "conditions": [], "effects": [{ "kind": "set_variable", "variable_id": "bell-signal", "value": 0 }], "transition": { "kind": "direct", "target_node_id": "ending-marsh" } }
+      ]
+    },
+    { "id": "ending-warning", "kind": "ending", "title": "Un pueblo despierto", "narration": "La campana resuena sobre los tejados y Elderglen se organiza para subir a terreno alto. Al amanecer el río baja; los vecinos recuerdan quién les dio tiempo para decidir.", "secrets": ["Las marcas del archivo se convierten en una referencia fiable para futuras crecidas."], "choices": [] },
+    { "id": "ending-marsh", "kind": "ending", "title": "Espacio para el río", "narration": "El aliviadero se abre con un profundo crujido y conduce la crecida al amplio marjal. Las casas de Elderglen quedan secas y, al amanecer, el pueblo empieza a reparar juntos los senderos del humedal.", "secrets": ["El marjal se recuperará, aunque habrá que reconstruir su antigua pasarela."], "choices": [] }
+  ]
+}

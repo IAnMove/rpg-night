@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "id": "elderglen",
+  "version": 1,
+  "title": "The Bell Beneath Elderglen",
+  "locale": "en",
+  "genre": "cozy mystery",
+  "tone": "wonder, community, gentle peril",
+  "duration_minutes": 15,
+  "players": { "min": 1, "max": 4 },
+  "content_limits": ["No graphic violence", "No harm to children", "No forced loss of player agency"],
+  "objective": "Discover why Elderglen's old flood bell has fallen silent and decide how the village should answer the rising river.",
+  "characters": [
+    { "id": "warden-elin", "name": "Warden Elin", "description": "A practical village keeper who wants everyone heard before a decision is made." },
+    { "id": "ferryman-oren", "name": "Oren", "description": "A patient ferryman who knows the old river paths." },
+    { "id": "mara", "name": "Mara", "description": "An archivist who protects Elderglen's flood records." }
+  ],
+  "items": [
+    { "id": "brass-key", "name": "Brass key", "description": "A broad, river-worn key that fits the lantern housing below the bell." },
+    { "id": "glass-prism", "name": "Glass prism", "description": "A small prism that catches even weak light." }
+  ],
+  "variables": {
+    "trust": { "initial": 0, "min": 0, "max": 3 },
+    "lantern-lit": { "initial": 0, "min": 0, "max": 1 },
+    "bell-signal": { "initial": 0, "min": 0, "max": 1 }
+  },
+  "initial_node_id": "arrival",
+  "nodes": [
+    {
+      "id": "arrival", "kind": "scene", "title": "The river road", "narration": "Rain beads on the sign at Elderglen's edge. Below the hill, the river is higher than the old flood marks, and the warning bell has not sounded.", "secrets": ["The bell's silence is caused by a jammed lantern mechanism, not a broken bell."],
+      "choices": [
+        { "id": "visit-green", "label": "Go to the village green", "action": "Ask the villagers what they have seen", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "green" } },
+        { "id": "follow-bank", "label": "Follow the riverbank", "action": "Look for signs along the water", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "bank" } }
+      ]
+    },
+    {
+      "id": "green", "kind": "scene", "title": "Voices on the green", "narration": "Warden Elin listens beneath a canvas awning while neighbors compare the rising water with marks on a stone post. No one agrees on whether to ring the bell or open the old spillway.", "secrets": ["Elin will support a plan more readily if the party asks for the neighbors' concerns before proposing it."],
+      "affordances": [{ "id": "speak-with-warden", "resolution_choice_id": "ask-warden", "label": "Speak with Warden Elin", "summary": "Hear the keeper's concerns and invite a practical response.", "targets": [{ "id": "warden-elin", "label": "Warden Elin" }], "item_ids": [], "approaches": [{ "id": "listen-first", "label": "Listen first" }, { "id": "share-observation", "label": "Share an observation" }] }],
+      "choices": [
+        { "id": "ask-warden", "label": "Ask Elin what the villagers need", "action": "Listen to Elin and the neighbors before choosing a plan", "conditions": [], "effects": [{ "kind": "increment_variable", "variable_id": "trust", "amount": 1 }], "transition": { "kind": "direct", "target_node_id": "lantern-room" } },
+        { "id": "offer-ferry-help", "label": "Offer to help Oren at the ferry", "action": "Earn a crossing by helping secure the ferry", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "ferry" } }
+      ]
+    },
+    {
+      "id": "bank", "kind": "scene", "title": "The reed-marked bank", "narration": "A line of fresh scratches runs from the water to a half-hidden stone stair. Across the current, Oren's ferry bumps gently against its mooring.", "secrets": ["The scratches point toward Elderglen's flood archive."],
+      "affordances": [{ "id": "inspect-river-marks", "resolution_choice_id": "search-marks", "label": "Inspect the river marks", "summary": "Compare the fresh scratches with the old flood stairs.", "targets": [{ "id": "stone-stair", "label": "Stone stair" }], "item_ids": [], "approaches": [{ "id": "trace-line", "label": "Trace the line" }, { "id": "compare-water", "label": "Compare the water level" }] }],
+      "choices": [
+        { "id": "search-marks", "label": "Follow the scratches to the stair", "action": "Search the old flood stair for clues", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "archives" } },
+        { "id": "hail-oren", "label": "Call to Oren at the ferry", "action": "Ask the ferryman to take you across", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "ferry" } }
+      ]
+    },
+    {
+      "id": "archives", "kind": "scene", "title": "The flood archive", "narration": "Behind the stair, a dry stone room holds maps and water-level ledgers. A brass key rests beside a drawing of a lantern beneath the bell tower.", "secrets": ["The brass key opens the tower lantern housing; the prism is stored in the ferry shed."],
+      "affordances": [{ "id": "search-ledgers", "resolution_choice_id": "take-key", "label": "Search the archive", "summary": "Use the records to find a tool for the silent tower lantern.", "targets": [{ "id": "flood-ledger", "label": "Flood ledger" }], "item_ids": [], "approaches": [{ "id": "check-drawing", "label": "Check the drawing" }, { "id": "compare-marks", "label": "Compare the marks" }] }],
+      "choices": [
+        { "id": "take-key", "label": "Take the brass key", "action": "Take the key shown in the lantern drawing", "conditions": [], "effects": [{ "kind": "add_item", "item_id": "brass-key" }], "transition": { "kind": "direct", "target_node_id": "lantern-room" } },
+        { "id": "leave-record", "label": "Copy the water marks and leave the key", "action": "Record the river level and continue to the ferry", "conditions": [], "effects": [{ "kind": "increment_variable", "variable_id": "trust", "amount": 1 }], "transition": { "kind": "direct", "target_node_id": "ferry" } }
+      ]
+    },
+    {
+      "id": "ferry", "kind": "scene", "title": "Oren's ferry", "narration": "Oren steadies the boat with one hand and points toward the bell tower with the other. The ferry shed on this bank is unlocked, though water is beginning to lap at its floor.", "secrets": ["A glass prism in the shed can help the tower lantern carry its warning across the valley."],
+      "affordances": [
+        { "id": "ask-oren-route", "resolution_choice_id": "ask-oren", "label": "Ask Oren about the crossing", "summary": "Ask Oren to guide the group safely to the tower.", "targets": [{ "id": "ferryman-oren", "label": "Oren" }], "item_ids": [], "approaches": [{ "id": "ask-route", "label": "Ask about the route" }] },
+        { "id": "search-ferry-shed", "resolution_choice_id": "search-shed", "label": "Search the ferry shed", "summary": "Find the glass prism before crossing to the tower.", "targets": [{ "id": "ferry-shed", "label": "Ferry shed" }], "item_ids": [], "approaches": [{ "id": "search-shed", "label": "Search the shed" }] }
+      ],
+      "choices": [
+        { "id": "ask-oren", "label": "Ask Oren to guide you across", "action": "Take the careful crossing with Oren's help", "conditions": [], "effects": [{ "kind": "increment_variable", "variable_id": "trust", "amount": 1 }], "transition": { "kind": "direct", "target_node_id": "bell-tower" } },
+        { "id": "search-shed", "label": "Search the shed before crossing", "action": "Find a useful item, then go to the tower", "conditions": [], "effects": [{ "kind": "add_item", "item_id": "glass-prism" }], "transition": { "kind": "direct", "target_node_id": "lantern-room" } }
+      ]
+    },
+    {
+      "id": "lantern-room", "kind": "scene", "title": "Below the bell", "narration": "The lower tower door opens onto a cramped lantern room. Its brass housing is still, and a narrow window faces the rooftops and the river road.", "secrets": ["The lantern can be relit with the brass key; the prism makes its signal visible farther away."],
+      "affordances": [{ "id": "use-brass-key", "resolution_choice_id": "light-lantern", "label": "Use the brass key", "summary": "Fit the key into the lantern housing and restore its light.", "targets": [{ "id": "lantern-housing", "label": "Lantern housing" }], "item_ids": ["brass-key"], "approaches": [{ "id": "turn-key", "label": "Turn the key" }] }],
+      "choices": [
+        { "id": "light-lantern", "label": "Use the brass key to light the lantern", "action": "Unlock and relight the warning lantern", "conditions": [{ "kind": "has_item", "item_id": "brass-key" }], "effects": [{ "kind": "remove_item", "item_id": "brass-key" }, { "kind": "set_variable", "variable_id": "lantern-lit", "value": 1 }], "transition": { "kind": "direct", "target_node_id": "bell-tower" } },
+        { "id": "carry-message", "label": "Carry the drawing to the tower stairs", "action": "Show the tower keeper the archive drawing", "conditions": [], "effects": [{ "kind": "increment_variable", "variable_id": "trust", "amount": 1 }], "transition": { "kind": "direct", "target_node_id": "bell-tower" } }
+      ]
+    },
+    {
+      "id": "bell-tower", "kind": "scene", "title": "The silent bell", "narration": "At the top of the tower, the great bell hangs above the river valley. A stiff release lever resists your pull; below, lantern light and village windows shimmer through the rain.", "secrets": ["A setback can leave the warning dim, but the spillway decision below remains available."],
+      "affordances": [
+        { "id": "work-release-lever", "resolution_choice_id": "test-lever", "label": "Work the release lever", "summary": "Pull the mechanism to release the bell.", "targets": [{ "id": "release-lever", "label": "Release lever" }], "item_ids": [], "approaches": [{ "id": "steady-pull", "label": "Pull steadily" }] },
+        { "id": "align-prism-with-lever", "resolution_choice_id": "align-prism", "label": "Align the glass prism", "summary": "Fit the prism to carry the bell's warning farther.", "targets": [{ "id": "release-lever", "label": "Release lever" }], "item_ids": ["glass-prism"], "approaches": [{ "id": "fit-prism", "label": "Fit the prism" }] }
+      ],
+      "choices": [
+        { "id": "test-lever", "label": "Test the stiff release lever", "action": "Make a d20 check to release the bell mechanism", "conditions": [{ "kind": "lacks_item", "item_id": "glass-prism" }], "effects": [], "transition": { "kind": "check", "sides": 20, "difficulty_class": 11, "success_node_id": "gate", "setback_node_id": "gate", "success_effects": [{ "kind": "set_variable", "variable_id": "bell-signal", "value": 1 }], "setback_effects": [{ "kind": "set_variable", "variable_id": "bell-signal", "value": 0 }] } },
+        { "id": "descend-to-gate", "label": "Go down to the spillway gate", "action": "Leave the lever and decide how to guide the water", "conditions": [], "effects": [], "transition": { "kind": "direct", "target_node_id": "gate" } },
+        { "id": "align-prism", "label": "Align the prism before testing the bell", "action": "Use the glass prism to carry the bell's warning farther", "conditions": [{ "kind": "has_item", "item_id": "glass-prism" }], "effects": [{ "kind": "remove_item", "item_id": "glass-prism" }], "transition": { "kind": "check", "sides": 20, "difficulty_class": 9, "success_node_id": "gate", "setback_node_id": "gate", "success_effects": [{ "kind": "set_variable", "variable_id": "bell-signal", "value": 1 }], "setback_effects": [{ "kind": "set_variable", "variable_id": "bell-signal", "value": 0 }] } }
+      ]
+    },
+    {
+      "id": "gate", "kind": "scene", "title": "The spillway choice", "narration": "The old gate stands between the river and the lower fields. From here, you can ring the warning bell for the village to shelter, or open the spillway and send the high water into the empty marsh.", "secrets": ["The marsh can take this rise in the river; opening the spillway protects homes but changes the wetland for the season."],
+      "affordances": [
+        { "id": "open-spillway", "resolution_choice_id": "open-spillway", "label": "Open the spillway", "summary": "Divert the high water into the marsh to protect Elderglen's homes.", "targets": [{ "id": "spillway-gate", "label": "Spillway gate" }], "item_ids": [], "approaches": [{ "id": "open-flow", "label": "Open toward the marsh" }] },
+        { "id": "ring-warning", "resolution_choice_id": "ring-warning", "label": "Ring the warning bell", "summary": "Warn the village so people have time to shelter above the water.", "targets": [{ "id": "flood-bell", "label": "Flood bell" }], "item_ids": [], "approaches": [{ "id": "sound-bell", "label": "Sound the bell" }] }
+      ],
+      "choices": [
+        { "id": "ring-warning", "label": "Ring the bell and warn the village", "action": "Give the village time to shelter above the water", "conditions": [], "effects": [{ "kind": "set_variable", "variable_id": "bell-signal", "value": 1 }], "transition": { "kind": "direct", "target_node_id": "ending-warning" } },
+        { "id": "open-spillway", "label": "Open the spillway toward the marsh", "action": "Divert the high water away from Elderglen's homes", "conditions": [], "effects": [{ "kind": "set_variable", "variable_id": "bell-signal", "value": 0 }], "transition": { "kind": "direct", "target_node_id": "ending-marsh" } }
+      ]
+    },
+    { "id": "ending-warning", "kind": "ending", "title": "A village awake", "narration": "The bell carries over the rooftops, and Elderglen moves together to higher ground. By morning the river has eased; the neighbors remember who gave them time to choose.", "secrets": ["The flood archive's marks become a trusted guide for future seasons."], "choices": [] },
+    { "id": "ending-marsh", "kind": "ending", "title": "Room for the river", "narration": "The spillway opens with a deep wooden groan, guiding the flood into the broad marsh. Elderglen's homes remain dry, and at dawn the village begins repairing the wetland paths together.", "secrets": ["The marsh will recover, but its old footbridge must be rebuilt."], "choices": [] }
+  ]
+}

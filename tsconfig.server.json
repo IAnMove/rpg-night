@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": false, "outDir": "dist/server", "rootDir": ".", "sourceMap": true },
+  "include": ["mcp-server/**/*.ts", "shared/**/*.ts"],
+  "exclude": ["tests", "web-tv"]
+}

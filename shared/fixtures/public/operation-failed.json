@@ -1,0 +1,8 @@
+{
+  "operation_id": "22222222-2222-4222-8222-222222222222",
+  "kind": "prepare_adventure",
+  "status": "failed",
+  "created_at": "2026-10-22T08:00:00.000Z",
+  "completed_at": "2026-10-22T08:00:04.000Z",
+  "error": { "code": "INVALID_GENERATED_GRAPH", "message": "The generated adventure did not pass validation.", "retryable": true }
+}
