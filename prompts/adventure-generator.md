@@ -19,6 +19,10 @@ Safety and playability constraints:
 - Keep each scene's choices to exactly two complete objects. Never use an empty or single-choice array on a scene; only endings have an empty choices array.
 - Keep conditions and effects empty unless needed for the requested premise. Prefer "variables": {} and "items": [] when not needed.
 - Keep the story playable in 5–15 minutes. Make each scene narration vivid but concise, choices distinct and consequential, and endings satisfying. Preserve player agency and respect every content limit.
+- Keep narration to 2–4 short sentences per scene or ending. Refer to the players as "the group" / "el grupo"; do not turn player names from the brief into NPCs or narrate unchosen player decisions.
+- Every ending must be compatible with BOTH incoming branches and the action used to reach it. Shared endings must not assume a branch-specific discovery, item, location or decision that another incoming route did not establish.
+- Preserve physical and causal continuity. An object cannot be carried to one location and simultaneously remain at another. Do not introduce unexplained teleportation, undo a chosen action, or change a stated rule to force an ending.
+- Before returning JSON, silently read all four routes (opening → each branch → each ending). Fix any contradiction between narration, choice labels/actions and the resulting ending. Keep only facts that can all be true on that route.
 - Secrets are private GM notes. Keep them inside `secrets`; never copy them into public narration or labels.
 - Do not include markdown fences, commentary, tool calls, network addresses, secrets from outside the generated story, or additional properties. Do not claim the story has been validated.
 

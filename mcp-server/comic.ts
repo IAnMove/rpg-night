@@ -2,7 +2,8 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Session } from '../shared/types.js';
 import type { HostPublicState } from '../shared/host-schema.js';
-import { sceneArt, xml } from './art.js';
+import { publicSceneArt, sceneArt, xml } from './art.js';
+import { storyPanels } from '../shared/public-story.js';
 
 function wrap(value: string, width: number): string[] {
   const lines: string[] = []; let line = '';
@@ -46,40 +47,44 @@ export async function comicSvg(session: Session, dataDir: string): Promise<strin
 
 /** A host-mode comic can use only the public snapshots persisted for the shared screen. */
 export function hostComicSvg(state: HostPublicState): string {
-  const turns = state.turns.filter((turn) => turn.phase === 'awaiting_choice' || turn.phase === 'ended').slice(-24);
+  const turns = storyPanels(state.turns);
   const cards = turns.map((turn, index) => {
     const title = state.locale === 'es' ? `Escena ${index + 1}` : `Scene ${index + 1}`;
-    const narration = wrap(turn.narration, 59).slice(0, 8);
+    const narration = wrap(turn.narration, 59);
     const action = turn.recent_outcome?.kind === 'action' ? turn.recent_outcome.action_label
-      : turn.recent_outcome?.kind === 'check' ? `${turn.recent_outcome.total}/20 · ${turn.recent_outcome.result}`
-        : turn.recent_outcome?.kind === 'ending' ? (state.locale === 'es' ? 'Final' : 'Ending') : '';
+      : turn.recent_outcome?.kind === 'check' ? `${turn.recent_outcome.total}/20 · ${turn.recent_outcome.result === 'success' ? (state.locale === 'es' ? 'Éxito' : 'Success') : (state.locale === 'es' ? 'Contratiempo' : 'Setback')}`
+        : '';
     const summary = turn.recent_outcome?.summary;
-    const outcomeLines = summary ? wrap(summary, 59).slice(0, 4) : [];
-    const choiceLines = turn.choices.slice(0, 3).map((choice) => wrap(choice.label, 55)[0] ?? choice.label);
-    let textY = 94;
+    const outcomeLines = summary && summary !== turn.narration ? wrap(summary, 59) : [];
+    const actionLines = wrap(action, 59);
+    const image = `data:image/svg+xml;base64,${Buffer.from(publicSceneArt(turn)).toString('base64')}`;
+    let textY = 470;
     const narrativeMarkup = narration.map((line) => {
       textY += 25;
       return `<text x="32" y="${textY}" fill="#d3dde2" font-family="Georgia,serif" font-size="18">${xml(line)}</text>`;
     }).join('');
-    const actionMarkup = action
-      ? `<rect x="24" y="${textY + 18}" width="600" height="34" rx="10" fill="#6c5125"/><text x="38" y="${textY + 41}" fill="#ffe6ac" font-family="sans-serif" font-size="16">${xml(action)}</text>`
-      : '';
-    if (action) textY += 60;
+    if (actionLines.length) textY += 16;
+    const actionMarkup = actionLines.map(line => {
+      textY += 23;
+      return `<text x="32" y="${textY}" fill="#ffe6ac" font-family="sans-serif" font-size="16">${xml(line)}</text>`;
+    }).join('');
+    if (outcomeLines.length) textY += 12;
     const outcomeMarkup = outcomeLines.map((line) => {
       textY += 22;
       return `<text x="32" y="${textY}" fill="#b8c6cf" font-family="sans-serif" font-size="15">${xml(line)}</text>`;
     }).join('');
-    const choicesMarkup = choiceLines.map((line, choiceIndex) => {
-      textY += 25;
-      return `<text x="38" y="${textY}" fill="#9ee4d0" font-family="sans-serif" font-size="15">${choiceIndex + 1}. ${xml(line)}</text>`;
-    }).join('');
-    const accent = ['#68c7c0', '#f2c67b', '#a79bec', '#ed947e'][index % 4];
-    const markup = `<g transform="translate(${32 + (index % 2) * 704} ${190 + Math.floor(index / 2) * 590})"><rect width="672" height="560" rx="18" fill="#14212d" stroke="#34414b"/><rect width="672" height="12" rx="6" fill="${accent}"/><circle cx="603" cy="66" r="26" fill="${accent}" opacity=".18"/><circle cx="603" cy="66" r="9" fill="${accent}" opacity=".8"/><text x="28" y="64" fill="#edcb89" font-family="sans-serif" font-size="14" letter-spacing="2">${state.locale === 'es' ? 'RPG NIGHT · HISTORIA COMPARTIDA' : 'RPG NIGHT · SHARED STORY'}</text><text x="28" y="91" fill="#f3e9d5" font-family="Georgia,serif" font-size="24">${xml(title)}</text>${narrativeMarkup}${actionMarkup}${outcomeMarkup}${choicesMarkup}${turn.phase === 'ended' ? `<text x="610" y="532" text-anchor="end" fill="#edcb89" font-family="sans-serif" font-size="15">${state.locale === 'es' ? 'FIN' : 'THE END'}</text>` : ''}</g>`;
-    return markup;
+    const height = textY + 65;
+    const markup = `<rect width="672" height="${height}" rx="18" fill="#14212d" stroke="#34414b"/><image x="1" y="1" width="670" height="377" preserveAspectRatio="xMidYMid slice" href="${image}"/><text x="28" y="414" fill="#edcb89" font-family="sans-serif" font-size="14" letter-spacing="2">${state.locale === 'es' ? 'RPG NIGHT · HISTORIA COMPARTIDA' : 'RPG NIGHT · SHARED STORY'}</text><text x="28" y="451" fill="#f3e9d5" font-family="Georgia,serif" font-size="26">${xml(title)}</text>${narrativeMarkup}${actionMarkup}${outcomeMarkup}${turn.phase === 'ended' ? `<text x="610" y="${height - 24}" text-anchor="end" fill="#edcb89" font-family="sans-serif" font-size="15">${state.locale === 'es' ? 'FIN' : 'THE END'}</text>` : ''}`;
+    return { markup, height };
   });
-  const rows = Math.ceil(cards.length / 2);
-  const height = 224 + rows * 590;
-  const body = cards.join('');
+  let y = 190;
+  let body = '';
+  for (let index = 0; index < cards.length; index += 2) {
+    const row = cards.slice(index, index + 2);
+    for (const [column, card] of row.entries()) body += `<g transform="translate(${32 + column * 704} ${y})">${card.markup}</g>`;
+    y += Math.max(...row.map(card => card.height)) + 28;
+  }
+  const height = y + 60;
   const title = state.locale === 'es' ? 'Vuestra historia, juntos' : 'Your story, together';
   const fallback = state.locale === 'es' ? 'La aventura todavía no ha empezado.' : 'The adventure has not started yet.';
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="${height}" viewBox="0 0 1440 ${height}"><title>${xml(title)}</title><rect width="100%" height="100%" fill="#0b1420"/><text x="32" y="55" fill="#edcb89" font-family="sans-serif" font-size="16" letter-spacing="4">RPG NIGHT</text><text x="32" y="105" fill="#f3e9d5" font-family="Georgia,serif" font-size="38">${xml(title)}</text>${cards.length ? body : `<text x="32" y="180" fill="#bdc8cd" font-family="sans-serif" font-size="20">${xml(fallback)}</text>`}<text x="720" y="${height - 24}" text-anchor="middle" fill="#91a4b5" font-family="sans-serif" font-size="14">${state.locale === 'es' ? 'Cada decisión, una historia que recordar.' : 'Every choice, a story worth keeping.'}</text></svg>`;

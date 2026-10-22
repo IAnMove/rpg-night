@@ -15,6 +15,8 @@ import { JsonJobStore } from '../mcp-server/jobs/store.js';
 import type { McpGateway } from '../mcp-server/host/mcp-gateway.js';
 import { HostResponseSchema } from '../shared/host-schema.js';
 import { PublicOperationSchema } from '../shared/session-schema.js';
+import { AdventureDefinitionSchema } from '../shared/adventure-schema.js';
+import { validateAdventureDefinition } from '../shared/adventure-validation.js';
 
 const requestId = '77777777-7777-4777-8777-777777777777';
 
@@ -64,7 +66,9 @@ test('prepare_adventure durably generates, validates, publishes and starts a pla
   const root = await mkdtemp(path.join(os.tmpdir(), 'rpg-generation-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const adventureDir = path.join(root, 'adventures');
-  const provider = new FakeProvider(playableAdventure());
+  const candidate = playableAdventure();
+  candidate.objective = 'Discover the moon map. '.repeat(24).slice(0, 500);
+  const provider = new FakeProvider(candidate);
   const service = new AdventureService({ dataDir: root, adventureDir, generatedAdventureDir: adventureDir, generationProvider: provider });
   const request = { request_id: requestId, premise: 'A misplaced map in a moonlit archive.', locale: 'en', preferences: { genre: 'mystery', player_count: 2 } };
 
@@ -90,12 +94,37 @@ test('prepare_adventure durably generates, validates, publishes and starts a pla
   if ('kind' in listed && listed.kind === 'error') throw new Error('expected adventure list');
   if (!('adventures' in listed)) throw new Error('expected adventure list');
   assert.equal(listed.adventures.some((adventure) => adventure.id === 'moonlit-archive'), true);
+  assert.equal(listed.adventures[0]?.objective, candidate.objective, 'the catalogue accepts the full public objective allowed by the adventure schema');
 
   const started = await service.startSession({ request_id: '88888888-8888-4888-8888-888888888888', adventure_id: 'moonlit-archive', locale: 'en', players: ['Ari'] });
   if ('kind' in started && started.kind === 'error') throw new Error(`generated story was not playable: ${started.code}`);
   if (!('scene_id' in started)) throw new Error('generated story did not return an initial scene');
   assert.equal(started.scene_id, 'arrival');
   assert.equal(PublicOperationSchema.parse(terminal).status, 'ready');
+});
+
+test('structurally valid generated stories with a locked route or unsafe cumulative effects are repaired or rejected before publishing', async t => {
+  for (const failure of ['locked-route', 'overflow']) {
+    const root = await mkdtemp(path.join(os.tmpdir(), `rpg-generation-${failure}-`));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const candidate = AdventureDefinitionSchema.parse(playableAdventure());
+    const room = candidate.nodes.find(node => node.id === 'reading-room');
+    assert.ok(room && room.kind === 'scene');
+    if (failure === 'locked-route') room.choices[1]!.conditions = [{ kind: 'has_item', item_id: 'brass-lens' }];
+    else {
+      candidate.variables.trust!.max = 1;
+      room.choices[1]!.effects = [{ kind: 'increment_variable', variable_id: 'trust', amount: 1 }];
+    }
+    assert.equal(validateAdventureDefinition(candidate).ok, true, 'shape and structural references alone would accept this story');
+    const provider = new FakeProvider(candidate);
+    const service = new AdventureService({ dataDir: root, adventureDir: path.resolve('adventures'), generationProvider: provider });
+    await service.prepareAdventure({ request_id: requestId, premise: 'A mystery with a safe route.', locale: 'en', preferences: {} });
+    const terminal = await waitForTerminal(service, requestId);
+    assert.equal(terminal.status, 'failed');
+    assert.equal(provider.calls.length, 2, 'one repair is attempted before rejecting the graph');
+    assert.match(provider.calls[1]?.repair?.issues.join(' ') ?? '', /reachable action|reachable state/);
+    await assert.rejects(readdir(path.join(root, 'generated-adventures')), { code: 'ENOENT' });
+  }
 });
 
 test('omitted generated action text safely inherits the public choice label', async (t) => {

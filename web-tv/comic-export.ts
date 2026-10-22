@@ -35,6 +35,25 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
+/** Rasterize the self-contained public-history SVG, with a bounded canvas for long stories. */
+export async function exportSvgPng(svg: string): Promise<Blob> {
+  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  try {
+    const image = await loadImage(url);
+    const width = image.naturalWidth;
+    const height = image.naturalHeight;
+    if (!width || !height) throw new Error('The comic has no image dimensions.');
+    const scale = Math.min(1, 8192 / width, 8192 / height, Math.sqrt(16_000_000 / (width * height)));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.floor(width * scale));
+    canvas.height = Math.max(1, Math.floor(height * scale));
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Image export is unavailable.');
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return await new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Image export failed.')), 'image/png'));
+  } finally { URL.revokeObjectURL(url); }
+}
+
 /**
  * Client-side comic PNG from session scenes (same-origin imageUrl SVG/PNG),
  * with titles and wrapped captions, without a server-side graphics dependency.

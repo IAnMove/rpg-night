@@ -17,17 +17,29 @@ session index and SSE bus are process-local. This MVP is not a multi-tenant or h
 
 ```sh
 docker build -t rpg-night .
-docker run --rm -p 3000:3000 -v rpg-night-data:/app/data rpg-night
+docker run --rm -p 3000:3000 -e HOST_MODE=disabled -v rpg-night-data:/app/data rpg-night
 ```
 
 Open http://localhost:3000. For Bedrock, pass settings with `--env-file .env` and use an appropriate
 runtime IAM role or secure credential mechanism. Do not bake credentials into the image.
+
+This portable container example runs the classic game. The full conversational demo is simplest with
+Node and Ollama running on the same machine. In a container, `127.0.0.1:11434` means the container itself;
+the local-only Ollama adapter does not accept `host.docker.internal` or an arbitrary remote model URL.
+To use the host from Docker, Ollama must share the container's loopback network (for example a deliberate
+host-network setup on a supporting platform), and `HOST_MODE=ollama` must be enabled. The final review
+could not execute Docker because Docker Desktop's Linux engine was not running.
 
 ## Phone/controller and shared TV
 
 For a trusted local network, set `HOST=0.0.0.0` and `PUBLIC_ORIGIN` to the exact address clients open,
 for example `http://192.168.1.20:3000`. The default host/origin checks intentionally reject unknown hosts.
 Open that address on the TV and use the copied session link on the controller.
+Do not bind only to the LAN IP while leaving `RPG_MCP_URL` on loopback: that makes the internal host lose
+its MCP connection. `HOST=0.0.0.0` keeps both addresses reachable. The host/origin check still accepts only
+the configured name and loopback names. Restrict any firewall exception to the private local subnet.
+If Windows denies adding a firewall rule, administrator access is required on that computer; a successful
+request from the server to its own LAN IP does not prove another device can connect.
 There is no account or pairing system: a session UUID or host conversation UUID is a capability. Anyone
 with a classic session URL can view and control that game; anyone with a host TV URL can view its public
 turn history and comic export. Anyone who can reach the service can create a new session.
@@ -54,6 +66,7 @@ current developer documentation. No Alexa+ account is configured by this reposit
 
 - **Blank page:** run `npm run build` before `npm start`, or use `npm run dev`.
 - **Port in use:** stop the earlier server or change `PORT`.
+- **Host fails after a port change:** remove an obsolete `RPG_MCP_URL` override; by default it derives from `PORT`.
 - **Host not allowed:** set `PUBLIC_ORIGIN` to the exact URL you open, then restart.
 - **Bedrock warning:** check credentials, region, model access and inference-profile ID. The warning
   identifies text or image fallback. Logs include error names without credentials.

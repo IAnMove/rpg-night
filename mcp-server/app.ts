@@ -5,7 +5,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { ZodError } from 'zod';
 import type { Config } from './config.js';
 import { actionSchema, diceSchema, Game, GameError, startSchema } from './game.js';
-import { sceneArt } from './art.js';
+import { publicSceneArt, sceneArt } from './art.js';
 import { comicSvg, hostComicSvg } from './comic.js';
 import { createMcpServer } from './mcp.js';
 import { createMcpV2Server } from './mcp-v2.js';
@@ -16,7 +16,7 @@ import { ConversationHost } from './host/service.js';
 import { McpGateway } from './host/mcp-gateway.js';
 import { OllamaClient } from './llm/ollama.js';
 
-export type HostController = Pick<ConversationHost, 'createConversation' | 'turn' | 'pause' | 'resume' | 'getPendingOperation'>
+export type HostController = Pick<ConversationHost, 'createConversation' | 'restoreConversation' | 'turn' | 'pause' | 'resume' | 'getPendingOperation'>
   & Partial<Pick<ConversationHost, 'getPublicState' | 'subscribePublicState'>>;
 
 export function createConversationHost(config: Config): ConversationHost | undefined {
@@ -63,6 +63,11 @@ export function createApp(
     const response = await host.createConversation(req.body);
     res.status(response.kind === 'error' ? 200 : 201).json(response);
   } : unavailableHost);
+  app.get('/api/host/conversations/:conversation_id', host ? async (req, res) => {
+    const id = ConversationIdSchema.safeParse(req.params.conversation_id);
+    if (!id.success) { res.status(400).json({ error: 'Invalid conversation ID.' }); return; }
+    res.json(await host.restoreConversation(id.data));
+  } : unavailableHost);
   app.post('/api/host/conversations/:conversation_id/turns', host ? async (req, res) => {
     const id = ConversationIdSchema.safeParse(req.params.conversation_id);
     if (!id.success) { res.status(400).json({ error: 'Invalid conversation ID.' }); return; }
@@ -93,6 +98,15 @@ export function createApp(
     res.json(state);
   } : unavailableHost);
   let hostTvConnections = 0;
+  app.get('/api/host/conversations/:conversation_id/art/:revision', host?.getPublicState ? async (req, res) => {
+    const id = ConversationIdSchema.safeParse(req.params.conversation_id);
+    if (!id.success || !/^\d{1,10}\.svg$/.test(req.params.revision)) { res.status(400).json({ error: 'Invalid scene reference.' }); return; }
+    const state = await host.getPublicState!(id.data);
+    const revision = Number.parseInt(req.params.revision, 10);
+    const turn = state?.turns.find(entry => entry.revision === revision) ?? (state?.turn?.revision === revision ? state.turn : undefined);
+    if (!turn) { res.status(404).json({ error: 'Played scene not found.' }); return; }
+    res.type('image/svg+xml').send(publicSceneArt(turn));
+  } : unavailableHost);
   app.get('/api/host/conversations/:conversation_id/events', host?.getPublicState && host.subscribePublicState ? async (req, res) => {
     const id = ConversationIdSchema.safeParse(req.params.conversation_id);
     if (!id.success) { res.status(400).json({ error: 'Invalid conversation ID.' }); return; }

@@ -6,12 +6,12 @@ A cooperative role-playing game for a shared screen. The classic web mode includ
 and comic; a separate browser host demonstrates the conversational MCP architecture intended for
 an Alexa+ compatible host. The local browser host is a simulation, not an Alexa integration.
 
-## Run in two minutes
+## Run locally
 
 Requires **Node.js 22.12 or later** and npm. No API key, AWS account or cloud service is needed for the demo.
 
 ```sh
-git clone https://github.com/IAnMove/rpg-night.git
+git clone --branch codex/complete-mvp https://github.com/IAnMove/rpg-night.git
 cd rpg-night
 npm ci
 npm run dev
@@ -23,6 +23,20 @@ That flow sends text or browser speech recognition to the server-side host, whic
 official MCP client to read and update the adventure. Authored adventures and host conversations support
 English and Spanish; local story preparation is available in both languages. Microphone access and spoken
 narration are optional browser features.
+
+The implementation is currently on **`codex/complete-mvp`**; `main` still contains the original scaffold.
+The repository is private, so cloning requires an authorized GitHub account until access is changed.
+Use the [implementation branch](https://github.com/IAnMove/rpg-night/tree/codex/complete-mvp) for judging.
+On PowerShell, use `npm.cmd` if the execution policy blocks `npm.ps1`.
+
+For the conversational mode, install [Ollama](https://ollama.com/download), start its desktop app
+(or run `ollama serve` in a separate terminal), and install the model once:
+
+```sh
+ollama pull qwen3:4b-instruct-2507-q4_K_M
+```
+
+This downloads a roughly 2.5 GB local model. No model download happens as part of `npm ci` or startup.
 
 - A safe choice earns trust or an ally. A risky choice uses a d20 against **DC 11**.
 - Roll first to prepare a check, or let the risky choice roll automatically. Each roll is consumed once.
@@ -59,7 +73,9 @@ endpoint through the official TypeScript SDK. See [presentation](presentacion.md
 [execution plan](plan-ejecucion.md), and [current feasibility and evidence](docs/feasibility.md).
 
 In Local host mode, **Open shared screen** opens a read-only view of the current public turn and played
-story panels. It follows updates over SSE and can download an SVG comic or print it as PDF. The classic
+story panels. Controller, TV and SVG comic share original procedural atmospheric illustrations derived
+only from already public scenes. These are not model-generated images or extra story facts. The screen
+follows updates over SSE and can download an illustrated PNG/SVG comic or print it as PDF. The classic
 game's TV/comic is a separate legacy flow; the host screen never reads its private transcript or future
 story nodes. This read-only snapshot, SSE event, and SVG export were also exercised against the real local
 Ollama/MCP host in completed English and Spanish games. Treat a host conversation link like a bearer link:
@@ -149,6 +165,9 @@ Browser speech / text → HTTP → Ollama host → official MCP client → MCP g
 `web-tv/` is the TypeScript screen and voice client. `shared/` defines their data contract.
 The per-session queue rejects stale choices and prevents simultaneous screens from duplicating a chapter.
 The demo is designed for a trusted living room, with loopback binding and same-origin checks by default.
+Changing `PORT` also changes the host's default loopback MCP endpoint. For a LAN demo, bind
+`HOST=0.0.0.0` and set `PUBLIC_ORIGIN` to the exact LAN URL; keep loopback reachable for the internal MCP
+client. Typed input and buttons work over LAN HTTP; microphone recognition needs HTTPS or localhost.
 
 ## Hackathon
 
@@ -158,5 +177,8 @@ AWS Builder mini-challenge. See [demo and submission materials](docs/DEMO.md) an
 [official rules](https://amazonappdev2026.devpost.com/rules) before submitting.
 Publishing the repository, recording a video, configuring an Alexa+ host and submitting on Devpost are
 separate steps; this code does not perform those actions.
+
+See the [final review plan](docs/PLAN-REVISION-FINAL.md) and [submission checklist](docs/ENTREGA-JAM.md)
+for verified evidence and the remaining recording/access/submission steps.
 
 MIT licensed. Built with Codex and Grok; all executable changes are reviewed and tested locally.

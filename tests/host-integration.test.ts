@@ -42,7 +42,7 @@ function ollamaMock(answer: { content: string; tool_calls: Array<{ name: string;
     chat: async () => {
       calls++;
       if (calls === 1) return { ...answer, elapsed_ms: 1 };
-      return { content: 'You open the stone door.', tool_calls: [], elapsed_ms: 1 };
+      throw new Error('The model is unavailable after choosing a tool. A committed action must not depend on another model call.');
     },
   } as unknown as OllamaClient;
   return ollama;
@@ -74,6 +74,7 @@ test('host validates a model choice, injects linkage and revision, and persists 
   if (response.kind !== 'turn') assert.fail('expected public turn response');
   assert.equal(response.turn.revision, 4);
   assert.equal(response.turn.narration, 'The door opens into a quiet courtyard.');
+  assert.equal(response.assistant_text, after.narration, 'Narration must reflect the committed turn without an additional model call.');
 
   const mutation = calls.find(({ name }) => name === 'submit_action');
   assert.ok(mutation);
@@ -90,6 +91,52 @@ test('host validates a model choice, injects linkage and revision, and persists 
   assert.deepEqual(persisted.public_turns.map(turn => turn.revision), [3, 4]);
   assert.equal(publishedRevision, 4, 'the public history event is emitted after the latest turn is durably stored');
   assert.equal(persisted.history.at(-2)?.content, 'Open the door.');
+  const restored = await host.restoreConversation(conversationId);
+  assert.equal(restored.kind, 'turn', 'restoring a linked conversation must not replay creation without its original session fingerprint');
+  if (restored.kind === 'turn') assert.equal(restored.turn.revision, 4);
+  const replay = await host.turn(conversationId, { request_id: turnRequestId, text: 'Open the door.', expected_revision: 3 });
+  assert.deepEqual(replay, response);
+  assert.equal(calls.filter(call => call.name === 'submit_action').length, 1);
+});
+
+test('an external MCP advance restores consistent public history and publishes the conflict snapshot', async t => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'rpg-host-external-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  let current = gameTurn(3);
+  const mcp = {
+    call: async () => ({ isError: false, structuredContent: current }), close: async () => undefined,
+  } as unknown as McpGateway;
+  const ollama = { chat: async () => { throw new Error('A stale turn must not invoke the model.'); } } as unknown as OllamaClient;
+  const host = await linkedHost(t, ollama, mcp, dir);
+  let publishedRevision = 0;
+  t.after(host.subscribePublicState(conversationId, state => { publishedRevision = state.turn?.revision ?? 0; }));
+  current = gameTurn(4, 'Another controller opened the door.');
+  const response = await host.turn(conversationId, { request_id: turnRequestId, text: 'Open the door.', expected_revision: 3 });
+  assert.equal(response.kind, 'error');
+  if (response.kind !== 'error') assert.fail('expected a recoverable conflict');
+  assert.equal(response.code, 'REVISION_CONFLICT');
+  const state = await host.getPublicState(conversationId);
+  assert.equal(state?.turn?.revision, 4);
+  assert.deepEqual(state?.turns.map(turn => turn.revision), [3, 4]);
+  assert.equal(publishedRevision, 4);
+  const resumed = await host.resume(conversationId, { request_id: '55555555-5555-4555-8555-555555555555', expected_revision: 4 });
+  assert.equal(resumed.kind, 'turn');
+  assert.equal((await host.getPublicState(conversationId))?.turn?.revision, 4);
+});
+
+test('resuming after an external advance saves the latest turn and its public history together', async t => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'rpg-host-resume-external-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  let current = gameTurn(3);
+  const mcp = { call: async () => ({ isError: false, structuredContent: current }), close: async () => undefined } as unknown as McpGateway;
+  const host = await linkedHost(t, {} as OllamaClient, mcp, dir);
+  await host.pause(conversationId, { request_id: turnRequestId, expected_revision: 3 });
+  current = gameTurn(4);
+  const resumed = await host.resume(conversationId, { request_id: '66666666-6666-4666-8666-666666666666', expected_revision: 3 });
+  assert.equal(resumed.kind, 'turn');
+  const state = await host.getPublicState(conversationId);
+  assert.equal(state?.paused, false);
+  assert.deepEqual(state?.turns.map(turn => turn.revision), [3, 4]);
 });
 
 test('an explicit numbered choice commits the authoritative MCP turn without trusting model narration', async (t) => {
@@ -281,7 +328,13 @@ test('host replaces a model-invented adventure ID with the human-selected offere
     },
     close: async () => undefined,
   } as unknown as McpGateway;
-  const ollama = ollamaMock({ content: '', tool_calls: [{ name: 'start_session', arguments: { adventure_id: 'model-invented-id', players: ['Lee'] } }] });
+  let modelCalls = 0;
+  const ollama = { chat: async () => {
+    modelCalls++;
+    if (modelCalls === 1) return { content: 'Your adventure has begun. Would you like to start?', tool_calls: [], elapsed_ms: 1 };
+    if (modelCalls === 2) return { content: '', tool_calls: [{ name: 'start_session', arguments: { adventure_id: 'model-invented-id', players: ['Lee'] } }], elapsed_ms: 1 };
+    throw new Error('No narration model call is allowed after the confirmed start.');
+  } } as unknown as OllamaClient;
   const host = new ConversationHost({ dataDir: dir, ollama, mcp, trace: () => undefined });
   t.after(() => host.close());
   const created = await host.createConversation({ request_id: conversationId, locale: 'en' });
@@ -292,9 +345,51 @@ test('host replaces a model-invented adventure ID with the human-selected offere
 
   const response = await host.turn(conversationId, { request_id: turnRequestId, text: 'Start The Bell Beneath Elderglen for Lee.' });
   assert.equal(response.kind, 'turn');
+  if (response.kind === 'turn') assert.equal(response.assistant_text, 'The adventure begins.');
+  assert.equal(modelCalls, 2, 'an unconfirmed prose start gets one tool-bound retry before any story is presented');
   const started = calls.find(({ name }) => name === 'start_session');
   assert.ok(started);
   assert.deepEqual(started.args, { adventure_id: 'elderglen', locale: 'en', request_id: turnRequestId, players: ['Lee'] });
   assert.equal(calls.some(({ name }) => name === 'list_adventures'), true);
   assert.deepEqual((await host.store.get(conversationId)).player_names, ['Lee'], 'Explicitly supplied player names should survive a host restart.');
+});
+
+test('selecting a just-prepared adventure starts that story instead of allowing a second preparation', async t => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'rpg-host-select-generated-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const summary = { id: 'new-lighthouse', version: 1, title: 'The Newly Prepared Lighthouse', locale: 'en', genre: 'mystery', tone: 'cozy', duration_minutes: 10, players: { min: 1, max: 4 }, objective: 'Find the missing book.' };
+  const calls: string[] = [];
+  const startRequestId = '77777777-7777-4777-8777-777777777777';
+  const mcp = {
+    ollamaTools: async () => ['list_adventures', 'prepare_adventure', 'get_operation_status', 'start_session'].map(name => ({ type: 'function', function: { name, parameters: { type: 'object' } } })),
+    call: async (name: string) => {
+      calls.push(name);
+      const operation = { operation_id: turnRequestId, kind: 'prepare_adventure', created_at: '2026-10-22T12:00:00.000Z' };
+      const data = name === 'prepare_adventure' ? { ...operation, status: 'pending', expires_at: '2026-10-22T12:05:00.000Z' }
+        : name === 'get_operation_status' ? { ...operation, status: 'ready', completed_at: '2026-10-22T12:00:01.000Z', result: { kind: 'adventure', adventure_id: summary.id, title: summary.title } }
+          : name === 'list_adventures' ? { adventures: [summary] } : gameTurn(1, 'A new story begins at the lighthouse.', startRequestId);
+      return { isError: false, structuredContent: data };
+    },
+    close: async () => undefined,
+  } as unknown as McpGateway;
+  let modelCalls = 0;
+  const ollama = { chat: async (input: { messages: Array<{ content: string }>; tools: Array<{ function: { name: string } }> }) => {
+    modelCalls++;
+    assert.match(input.messages[0]!.content, /already prepared successfully/);
+    assert.match(input.messages[0]!.content, /explicitly selected/);
+    const incorrectlyAllowed = input.tools.some(tool => tool.function.name === 'prepare_adventure');
+    return { content: '', elapsed_ms: 1, tool_calls: [{ name: incorrectlyAllowed ? 'prepare_adventure' : 'start_session', arguments: incorrectlyAllowed ? { premise: 'Create the same lighthouse again.', preferences: {} } : { adventure_id: summary.id, players: ['Lee'] } }] };
+  } } as unknown as OllamaClient;
+  const host = new ConversationHost({ dataDir: dir, mcp, ollama, trace: () => undefined });
+  t.after(() => host.close());
+  await host.createConversation({ request_id: conversationId, locale: 'en' });
+  const preparation = await host.turn(conversationId, { request_id: turnRequestId, text: 'Create a new cozy mystery for Lee.' });
+  assert.equal(preparation.kind, 'operation');
+  const ready = await host.getPendingOperation(conversationId);
+  assert.equal(ready.kind, 'operation');
+  const started = await host.turn(conversationId, { request_id: startRequestId, text: `Start ${summary.title} for Lee.` });
+  assert.equal(started.kind, 'turn');
+  assert.equal(calls.filter(name => name === 'prepare_adventure').length, 1);
+  assert.equal(calls.filter(name => name === 'start_session').length, 1);
+  assert.equal(modelCalls, 1);
 });

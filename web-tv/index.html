@@ -95,7 +95,7 @@
     <div class="landing-copy">
       <p class="eyebrow" data-i18n="eyebrow">Voice-led adventures · Shared on your TV</p>
       <h1 id="landing-title" class="editorial-title" data-i18n="landingTitle">Your next great story starts on the sofa.</h1>
-      <p class="lede" data-i18n="landingLede">Pick a world, decide together, roll the dice, and take home a comic of the night. An Alexa+ companion with a browser voice demo for the living room.</p>
+      <p class="lede" data-i18n="landingLede">Pick a world, decide together, roll the dice, and take home a comic of the night. Try a local conversational host with optional browser voice; Alexa+ is simulated, not connected to an Echo.</p>
 
       <div class="provider-badge" id="provider-badge" role="status" aria-live="polite">
         <span class="badge-dot" aria-hidden="true"></span>
@@ -104,7 +104,7 @@
 
       <button type="button" class="btn host-launch" id="host-mode-btn">
         <span data-i18n="localHostLaunch">Play with the local Game Master</span>
-        <span class="host-launch-note" data-i18n="localHostNote">Ollama · real MCP tools · browser voice simulation</span>
+        <span class="host-launch-note" data-i18n="localHostNote">Requires Ollama · voice optional</span>
       </button>
 
       <form id="start-form" class="start-form" novalidate>
@@ -181,6 +181,10 @@
     </header>
     <main id="host-main" class="host-main">
       <div class="host-story-card">
+        <figure id="host-art" class="host-art" hidden>
+          <img id="host-art-image" alt="" width="1600" height="900" />
+          <figcaption data-i18n="hostArtCaption">Scene atmosphere · procedural illustration</figcaption>
+        </figure>
         <p class="host-scene-label" id="host-scene-label" data-i18n="hostWelcome">Your Game Master is ready</p>
         <p id="host-narration" class="host-narration" aria-live="polite"></p>
         <p id="host-question" class="host-question" hidden></p>
@@ -188,7 +192,9 @@
         <div class="host-meta-row">
           <p id="host-inventory" class="host-inventory" hidden></p>
           <p id="host-check" class="host-check" hidden></p>
+          <button type="button" id="host-roll-btn" class="btn" hidden data-i18n="rollD20">Roll d20</button>
         </div>
+        <p id="host-outcome" class="host-outcome" role="status" hidden></p>
       </div>
       <section class="host-conversation" aria-label="Conversation with the Game Master">
         <div id="host-transcript" class="host-transcript" role="log" aria-live="polite" aria-relevant="additions text"></div>
@@ -198,6 +204,7 @@
           <button type="button" class="btn secondary" id="host-mic-btn" data-i18n="speak">Speak</button>
           <button type="submit" class="btn" id="host-send-btn" data-i18n="sendAction">Send</button>
         </form>
+        <p id="host-mic-note" class="host-mic-note" hidden></p>
       </section>
       <footer class="host-controls">
         <span id="host-mode-badge" class="host-mode-badge" data-i18n="localHostBadge">Local Ollama host · not connected to an Echo</span>
@@ -217,12 +224,16 @@
     <header class="host-tv-topbar">
       <div><p class="eyebrow">RPG Night · <span id="host-tv-live">Connecting…</span></p><h1 id="host-tv-title">Your story, together</h1></div>
       <div class="host-tv-actions">
+        <button type="button" id="host-tv-png" class="btn secondary" disabled data-i18n="downloadPng">Download PNG</button>
         <a id="host-tv-comic" class="btn secondary" data-i18n="downloadSvg">Download SVG</a>
         <button type="button" id="host-tv-print" class="btn" data-i18n="printPdf">Print / Save PDF</button>
       </div>
     </header>
-    <main class="host-tv-main">
+    <main id="host-tv-main" class="host-tv-main">
+      <p id="host-tv-error" class="host-error" role="alert" hidden></p>
       <section class="host-tv-current" aria-live="polite">
+        <figure id="host-tv-art" class="host-tv-art" hidden><img id="host-tv-art-image" alt="" width="1600" height="900" /><figcaption id="host-tv-art-caption"></figcaption></figure>
+        <div class="host-tv-current-body">
         <p id="host-tv-phase" class="eyebrow"></p>
         <p id="host-tv-waiting" class="host-tv-waiting">Waiting for the group to start a story…</p>
         <h2 id="host-tv-scene"></h2>
@@ -230,6 +241,7 @@
         <p id="host-tv-check" class="host-tv-check" hidden></p>
         <ul id="host-tv-choices" class="host-tv-choices"></ul>
         <p id="host-tv-inventory" class="host-tv-inventory"></p>
+        </div>
       </section>
       <section class="host-tv-history" aria-label="Played story panels">
         <h2 id="host-tv-history-title">The story so far</h2>

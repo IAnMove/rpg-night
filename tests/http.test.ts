@@ -10,6 +10,11 @@ import { Game } from '../mcp-server/game.js';
 import { readConfig } from '../mcp-server/config.js';
 import type { Session } from '../shared/types.js';
 
+test('changing PORT keeps the conversational host on the same canonical MCP server', () => {
+  assert.equal(readConfig({ PORT: '3101' }).mcpUrl, 'http://127.0.0.1:3101/mcp');
+  assert.equal(readConfig({ PORT: '3101', RPG_MCP_URL: 'http://localhost:3200/mcp' }).mcpUrl, 'http://localhost:3200/mcp');
+});
+
 async function fixture(t: test.TestContext) {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'rpg-night-http-'));
   const config = readConfig({ DATA_DIR: dir }); const game = new Game(config); await game.init();

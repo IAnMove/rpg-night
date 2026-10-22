@@ -54,8 +54,8 @@ minutes because story generation is real. The latest result and limits are recor
 
 ## Latest verification
 
-On 22 October 2026, `npm.cmd test` passed **81/81**, `npm.cmd run build` completed, and
-`PLAYWRIGHT_CHANNEL=chrome npm.cmd run test:e2e` passed **7/7** using the installed Chrome. The live
+On 22 October 2026, `npm.cmd test` passed **88/88**, `npm.cmd run build` completed, and
+`PLAYWRIGHT_CHANNEL=chrome npm.cmd run test:e2e` passed **8/8** using the installed Chrome. The live
 Ollama/MCP conversational matrix passed **20/20** across English and Spanish. Automated assertions cover
 tool execution, state and privacy invariants; a person still needs to review narrative quality and test a
 real microphone. See the [review report](review.md) and [shared-screen probe](host-v2-check.md).
@@ -73,11 +73,22 @@ Chromium. In PowerShell: `$env:PLAYWRIGHT_CHANNEL='chrome'; npm run test:e2e`.
 The suite starts the **production build** on port 3101, stores its sessions in ignored
 `.work/browser-data`, and exercises the actual UI. Failed runs retain a Playwright trace.
 
+The final review also installed a clean source snapshot using `npm ci --offline`, compiled it and ran
+the compiled host with real Ollama/MCP on port 3110. It completed an English authored story and a newly
+generated Spanish one, downloaded/decoded PNG, checked self-contained SVG, printed PDF, and compared
+the entire public state after a process restart. PDF extraction checked every played narration; all
+nine rendered pages were visually reviewed. These local artifacts are in ignored `.work/final-review`.
+The host-specific browser suite was also rerun after the saved-conversation recovery change (4/4).
+
+Generation validation checks mechanical playability of every reachable state and both d20 outcomes,
+not literary consistency. The review found a narrative contradiction and strengthened the prompt;
+generated prose still needs editorial review. See [the findings](review.md).
+
 Manual checks that require hardware, permissions or accounts:
 
 - Allow the microphone in a supporting browser and speak one action in each language.
 - Enable narration, mute it, change chapters and ensure narration does not repeat on dice updates.
 - Use full screen on the intended TV and check readability from the sofa.
 - Verify the browser's print dialog saves the entire comic as PDF.
-- Use valid AWS credentials in Bedrock mode and confirm both models work in your region.
-- Connect your intended Alexa+/MCP host to the deployed HTTPS endpoint.
+- If demonstrating Bedrock, use valid AWS credentials and confirm both models work in your region.
+- If partner access to an Alexa+ host is available, test its HTTPS integration separately. The browser simulation is the documented submission path and needs no Echo connection.

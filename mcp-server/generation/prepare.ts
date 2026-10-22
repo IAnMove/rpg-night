@@ -6,6 +6,7 @@ import { validateAdventureDefinition } from '../../shared/adventure-validation.j
 import { PublicErrorSchema, PublicOperationSchema, type PublicError, type PublicOperation, type StoredOperation } from '../../shared/session-schema.js';
 import { JsonJobStore, JobStoreError } from '../jobs/store.js';
 import type { AdventureGenerationProvider, AdventureRepairContext } from './provider.js';
+import { validateGeneratedPlayability } from '../engine/playability.js';
 
 export const ADVENTURE_OPERATION_TTL_MS = 5 * 60_000;
 const MAX_ACTIVE_GENERATIONS = 2;
@@ -195,7 +196,7 @@ export class AdventurePreparationService {
     const result = validateAdventureDefinition(completeMissingChoiceActions(input));
     if (!result.ok) return { ok: false, issues: result.issues.map(({ path, message }) => `${path}: ${message}`) };
     const adventure = result.adventure;
-    const issues: string[] = [];
+    const issues: string[] = validateGeneratedPlayability(adventure);
     if (adventure.locale !== request.locale) issues.push('locale must match the requested locale');
     if (request.preferences.genre && adventure.genre.toLocaleLowerCase() !== request.preferences.genre.toLocaleLowerCase()) issues.push('genre must match the requested genre');
     if (request.preferences.tone && adventure.tone.toLocaleLowerCase() !== request.preferences.tone.toLocaleLowerCase()) issues.push('tone must match the requested tone');

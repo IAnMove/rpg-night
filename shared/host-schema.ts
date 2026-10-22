@@ -117,7 +117,7 @@ export const AdventureSummarySchema = z.object({
   tone: z.string().trim().min(1).max(120),
   duration_minutes: z.number().int().min(5).max(60),
   players: z.object({ min: z.number().int().min(1).max(6), max: z.number().int().min(1).max(6) }).strict(),
-  objective: z.string().trim().min(1).max(240),
+  objective: z.string().trim().min(1).max(500),
 }).strict();
 export type AdventureSummary = z.infer<typeof AdventureSummarySchema>;
 export const ListAdventuresResponseSchema = z.object({ adventures: z.array(AdventureSummarySchema).max(200) }).strict();

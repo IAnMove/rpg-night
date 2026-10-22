@@ -1,9 +1,10 @@
 import type { HostResponse } from '../shared/host-schema.js';
 import type { Language } from '../shared/types.js';
 import { $, clearChildren, createEl, setHidden, text } from './dom.js';
-import { createHostConversation, controlHostConversation, getPendingHostOperation, HostApiError, restoreHostConversation, sendHostTurn } from './host-api.js';
+import { createHostConversation, controlHostConversation, getHostPublicState, getPendingHostOperation, hostSceneArtUrl, HostApiError, restoreHostConversation, sendHostTurn } from './host-api.js';
 import { createMic, createTts, speechSynthesisSupported, type MicController, type TtsController } from './speech.js';
 import { t, type MsgKey } from './i18n.js';
+import { createRequestId } from './request-id.js';
 
 const SESSION_KEY = 'rpg-night.v2.sessionId';
 const CONVERSATION_KEY = 'rpg-night.v2.conversationId';
@@ -22,6 +23,7 @@ export function initHostPanel(options: {
   const sendButton = $('host-send-btn') as HTMLButtonElement;
   const micButton = $('host-mic-btn') as HTMLButtonElement;
   const pauseButton = $('host-pause-btn') as HTMLButtonElement;
+  const rollButton = $('host-roll-btn') as HTMLButtonElement;
   const ttsButton = $('host-tts-btn') as HTMLButtonElement;
   const tts: TtsController = createTts();
   let conversationId: string | null = null;
@@ -31,6 +33,7 @@ export function initHostPanel(options: {
   let operationPending = false;
   let operationPollTimer: number | null = null;
   let operationPollAttempts = 0;
+  let viewVersion = 0;
   let mic: MicController | null = null;
 
   const msg = (key: MsgKey, vars?: Record<string, string | number>) => t(options.getLanguage(), key, vars);
@@ -64,6 +67,7 @@ export function initHostPanel(options: {
     micButton.disabled = value || paused || operationPending || !mic;
     document.querySelectorAll<HTMLButtonElement>('.host-choice').forEach(button => { button.disabled = value || paused || operationPending; });
     pauseButton.disabled = value || !turn || turn.phase === 'ended';
+    rollButton.disabled = value || paused || operationPending;
     ($('host-new-btn') as HTMLButtonElement).disabled = value;
   };
 
@@ -74,8 +78,14 @@ export function initHostPanel(options: {
   const renderTurn = (next: HostTurn) => {
     turn = next;
     localStorage.setItem(SESSION_KEY, next.session_id);
-    text($('host-scene-label'), `${next.scene_id.replaceAll('-', ' ')} · ${next.phase}`);
+    text($('host-scene-label'), msg(next.phase === 'awaiting_check' ? 'hostCheck' : paused ? 'hostPaused' : 'hostYourTurn'));
     text($('host-narration'), next.narration);
+    if (conversationId) {
+      const art = $('host-art-image') as HTMLImageElement;
+      art.src = hostSceneArtUrl(conversationId, next.revision);
+      art.alt = msg('hostArtCaption');
+      setHidden($('host-art'), false);
+    }
     setHidden($('host-question'), true);
     const choices = $('host-choices');
     clearChildren(choices);
@@ -98,6 +108,10 @@ export function initHostPanel(options: {
     const check = $('host-check');
     text(check, pendingCheck ? `${msg('hostCheck')} · ${pendingCheck.prompt} · DC ${pendingCheck.difficulty_class}` : '');
     setHidden(check, !pendingCheck);
+    setHidden(rollButton, !pendingCheck);
+    const outcome = next.recent_outcome;
+    text($('host-outcome'), outcome ? `${outcome.kind === 'check' ? `d20: ${outcome.total} / DC ${outcome.difficulty_class} · ${msg(outcome.result === 'success' ? 'rollSuccess' : 'outcomeSetback')}\n` : ''}${outcome.summary}` : '');
+    setHidden($('host-outcome'), !outcome);
     pauseButton.disabled = next.phase === 'ended' || busy;
     text(pauseButton, paused ? msg('resumeGame') : msg('pauseGame'));
     if (next.phase === 'ended') {
@@ -141,7 +155,7 @@ export function initHostPanel(options: {
     if (response.kind === 'operation') {
       if (response.operation.status === 'pending') {
         operationPending = true;
-        addMessage('gm', msg('hostStarting'));
+        addMessage('gm', msg('hostPreparing'));
         if (!operationPollTimer) scheduleOperationPoll();
       } else if (response.operation.status === 'ready') {
         operationPending = false;
@@ -169,6 +183,14 @@ export function initHostPanel(options: {
     return error instanceof Error ? error.message : msg('hostError');
   };
 
+  async function refreshAfterConflict(response: HostResponse): Promise<void> {
+    if (response.kind !== 'error' || response.code !== 'REVISION_CONFLICT' || !conversationId) return;
+    const current = await getHostPublicState(conversationId);
+    paused = current.paused;
+    if (current.turn) renderTurn(current.turn);
+    showError(msg('stateChanged'));
+  }
+
   async function submit(raw: string): Promise<void> {
     const value = raw.trim();
     if (!value || !conversationId || busy || paused || operationPending) return;
@@ -180,11 +202,12 @@ export function initHostPanel(options: {
     setStatus('thinking');
     try {
       const response = await sendHostTurn(conversationId, {
-        request_id: crypto.randomUUID(),
+        request_id: createRequestId(),
         text: value,
         ...(turn ? { expected_revision: turn.revision } : {}),
       });
       handleResponse(response);
+      await refreshAfterConflict(response);
       setStatus(paused ? 'paused' : operationPending ? 'thinking' : 'live');
     } catch (error) {
       const message = messageForError(error);
@@ -206,9 +229,12 @@ export function initHostPanel(options: {
 
   async function pollPendingOperation(): Promise<void> {
     if (!operationPending || !conversationId) return;
+    const pollVersion = viewVersion;
+    const pollConversationId = conversationId;
     operationPollAttempts++;
     try {
       const response = await getPendingHostOperation(conversationId);
+      if (pollVersion !== viewVersion || pollConversationId !== conversationId) return;
       if (response.kind === 'operation' && response.operation.status === 'pending') {
         if (operationPollAttempts <= 120) scheduleOperationPoll(Math.min(5000, 1200 + operationPollAttempts * 100));
         else {
@@ -223,6 +249,7 @@ export function initHostPanel(options: {
       setStatus(paused ? 'paused' : 'live');
       setBusy(false);
     } catch (error) {
+      if (pollVersion !== viewVersion || pollConversationId !== conversationId) return;
       if (operationPollAttempts <= 120) scheduleOperationPoll(Math.min(5000, 1200 + operationPollAttempts * 100));
       else {
         operationPending = false;
@@ -238,42 +265,69 @@ export function initHostPanel(options: {
       return;
     }
     tts.stop();
-    mic.start();
+    if (mic.listening) mic.stop();
+    else mic.start();
   };
 
   mic = createMic({
     getLang: options.getLanguage,
-    onTranscript: value => { input.value = value; void submit(value); },
+    onTranscript: value => { mic?.stop(); input.value = value; void submit(value); },
     onListening: listening => {
       setStatus(listening ? 'listening' : paused ? 'paused' : busy ? 'thinking' : 'live');
       micButton.setAttribute('aria-pressed', listening ? 'true' : 'false');
+      text(micButton, msg(listening ? 'stopListening' : 'speak'));
     },
     onError: () => showError(options.getLanguage() === 'es' ? 'No se ha entendido el audio. Prueba otra vez o escribe la acción.' : 'Speech could not be recognized. Try again or type your action.'),
   });
+  const micNote = $('host-mic-note');
+  const refreshMicNote = () => {
+    text(micNote, !window.isSecureContext ? msg('hostMicSecure') : !mic ? msg('speechUnsupported') : '');
+    setHidden(micNote, Boolean(mic));
+  };
+  refreshMicNote();
+  rollButton.addEventListener('click', () => { void submit(options.getLanguage() === 'es' ? 'Tiramos el d20.' : 'Roll the d20.'); });
 
   const open = async () => {
     if (busy) return;
+    viewVersion++;
+    if (operationPollTimer) window.clearTimeout(operationPollTimer);
+    operationPollTimer = null;
+    operationPending = false;
+    operationPollAttempts = 0;
     const language = options.getLanguage();
     showError(null);
     clearChildren(transcript);
     turn = null;
     paused = false;
+    text($('host-scene-label'), msg('hostWelcome'));
+    text($('host-narration'), '');
+    clearChildren($('host-choices'));
+    for (const id of ['host-art', 'host-question', 'host-check', 'host-outcome', 'host-inventory', 'host-roll-btn', 'host-new-btn']) setHidden($(id), true);
     localStorage.setItem('rpg-night.v2.locale', language);
     setBusy(true);
     setStatus('thinking', msg('hostStarting'));
     setHidden(landing, true);
     setHidden(app, true);
     setHidden(panel, false);
+    const skip = document.querySelector<HTMLAnchorElement>('.skip-link');
+    if (skip) skip.href = '#host-main';
     try {
-      const savedConversation = localStorage.getItem(CONVERSATION_KEY) ?? undefined;
-      const savedSession = localStorage.getItem(SESSION_KEY) ?? undefined;
       const savedLocale = localStorage.getItem(CONVERSATION_LOCALE_KEY);
-      const restoreLocale = savedLocale === 'es' || savedLocale === 'en' ? savedLocale : language;
-      const response = savedConversation
-        ? await restoreHostConversation(restoreLocale, savedConversation)
+      let savedConversation = savedLocale === language ? localStorage.getItem(CONVERSATION_KEY) ?? undefined : undefined;
+      let savedSession = savedLocale === language ? localStorage.getItem(SESSION_KEY) ?? undefined : undefined;
+      let response = savedConversation
+        ? await restoreHostConversation(savedConversation)
         : await createHostConversation(language, savedSession);
+      let missingSaved = false;
+      if (response.kind === 'error' && response.code === 'NOT_FOUND' && (savedConversation || savedSession)) {
+        missingSaved = true;
+        savedConversation = undefined; savedSession = undefined;
+        localStorage.removeItem(SESSION_KEY); localStorage.removeItem(CONVERSATION_KEY);
+        response = await createHostConversation(language);
+      }
       handleResponse(response);
-      if (savedConversation) {
+      if (missingSaved) addMessage('gm', msg('hostSavedMissing'));
+      if (savedConversation && response.kind === 'message' && !response.conversation.session_id) {
         const operation = await getPendingHostOperation(savedConversation);
         if (operation.kind === 'operation') handleResponse(operation);
         else if (operation.kind === 'error' && operation.code !== 'NOT_FOUND') showError(operation.message);
@@ -300,8 +354,13 @@ export function initHostPanel(options: {
 
   $('host-mode-btn').addEventListener('click', () => { void open(); });
   $('host-back-btn').addEventListener('click', () => {
+    viewVersion++;
+    if (operationPollTimer) window.clearTimeout(operationPollTimer);
+    operationPollTimer = null;
     mic?.stop(); tts.stop();
     setHidden(panel, true); setHidden(landing, false);
+    const skip = document.querySelector<HTMLAnchorElement>('.skip-link');
+    if (skip) skip.href = '#start-form';
   });
   $('host-turn-form').addEventListener('submit', event => {
     event.preventDefault();
@@ -317,6 +376,7 @@ export function initHostPanel(options: {
     tts.setEnabled(enabled);
     ttsButton.setAttribute('aria-pressed', enabled ? 'true' : 'false');
     text(ttsButton, msg(enabled ? 'muteNarration' : 'enableNarration'));
+    if (enabled) speak(turn?.narration ?? transcript.lastElementChild?.textContent ?? '');
   });
   pauseButton.addEventListener('click', async () => {
     if (!conversationId || busy || !turn) return;
@@ -324,8 +384,8 @@ export function initHostPanel(options: {
     tts.stop(); mic?.stop();
     try {
       const response = await controlHostConversation(conversationId, paused ? 'resume' : 'pause', turn.revision);
-      paused = !paused;
       handleResponse(response);
+      await refreshAfterConflict(response);
       setStatus(paused ? 'paused' : 'live');
     } catch (error) {
       showError(messageForError(error));
@@ -361,6 +421,7 @@ export function initHostPanel(options: {
     const language = (event as CustomEvent<Language>).detail;
     if (language !== 'en' && language !== 'es') return;
     text($('host-mode-badge'), msg('localHostBadge'));
+    refreshMicNote();
     if (turn) renderTurn(turn);
   });
 }

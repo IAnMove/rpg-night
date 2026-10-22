@@ -37,7 +37,7 @@ function getRecognitionCtor(): SpeechRecognitionConstructor | null {
 }
 
 export function speechRecognitionSupported(): boolean {
-  return getRecognitionCtor() != null;
+  return window.isSecureContext && getRecognitionCtor() != null;
 }
 
 export function speechSynthesisSupported(): boolean {
@@ -60,7 +60,7 @@ export function createMic(opts: {
   onError: (message: string) => void;
 }): MicController | null {
   const Ctor = getRecognitionCtor();
-  if (!Ctor) return null;
+  if (!Ctor || !speechRecognitionSupported()) return null;
 
   let recognition: SpeechRecognitionLike | null = null;
   let listening = false;

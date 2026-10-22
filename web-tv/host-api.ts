@@ -1,5 +1,6 @@
 import { HostPublicStateSchema, HostResponseSchema, type HostPublicState, type HostResponse, type PlayerTurnRequest } from '../shared/host-schema.js';
 import type { Language } from '../shared/types.js';
+import { createRequestId } from './request-id.js';
 
 export class HostApiError extends Error {
   constructor(message: string, readonly status: number) {
@@ -37,14 +38,12 @@ async function request(url: string, init?: RequestInit): Promise<HostResponse> {
 export function createHostConversation(locale: Language, sessionId?: string): Promise<HostResponse> {
   return request('/api/host/conversations', {
     method: 'POST',
-    body: JSON.stringify({ request_id: crypto.randomUUID(), locale, ...(sessionId ? { session_id: sessionId } : {}) }),
+    body: JSON.stringify({ request_id: createRequestId(), locale, ...(sessionId ? { session_id: sessionId } : {}) }),
   });
 }
 
-export function restoreHostConversation(locale: Language, conversationId: string): Promise<HostResponse> {
-  return request('/api/host/conversations', {
-    method: 'POST', body: JSON.stringify({ request_id: conversationId, locale }),
-  });
+export function restoreHostConversation(conversationId: string): Promise<HostResponse> {
+  return request(`/api/host/conversations/${encodeURIComponent(conversationId)}`);
 }
 
 export function getPendingHostOperation(conversationId: string): Promise<HostResponse> {
@@ -64,7 +63,7 @@ export function controlHostConversation(
 ): Promise<HostResponse> {
   return request(`/api/host/conversations/${encodeURIComponent(conversationId)}/${control}`, {
     method: 'POST',
-    body: JSON.stringify({ request_id: crypto.randomUUID(), ...(expectedRevision === undefined ? {} : { expected_revision: expectedRevision }) }),
+    body: JSON.stringify({ request_id: createRequestId(), ...(expectedRevision === undefined ? {} : { expected_revision: expectedRevision }) }),
   });
 }
 
@@ -86,4 +85,8 @@ export function connectHostPublicState(conversationId: string, onState: (state: 
 
 export function hostComicSvgUrl(conversationId: string): string {
   return `/api/host/conversations/${encodeURIComponent(conversationId)}/comic.svg`;
+}
+
+export function hostSceneArtUrl(conversationId: string, revision: number): string {
+  return `/api/host/conversations/${encodeURIComponent(conversationId)}/art/${revision}.svg`;
 }

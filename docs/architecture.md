@@ -1,4 +1,4 @@
-# Arquitectura propuesta para RPG Night v2
+# Arquitectura de RPG Night v2
 
 Este documento describe los límites entre conversación, juego y presentación para RPG Night v2. Los contratos ejecutables viven en `shared/`; la implementación actual se comprueba con pruebas automatizadas y probes locales con Ollama.
 
@@ -22,7 +22,7 @@ Interfaz web ──HTTP──→ host conversacional
 
 El host ejecuta `initialize`, `tools/list` y `tools/call` mediante el cliente MCP oficial. No llama directamente al motor ni usa REST de juego como sustituto de MCP. La interfaz usa el host para todos los turnos, incluidos los botones de opciones. Una integración futura puede sustituir el host por Alexa+; el simulador no se presenta como una integración publicada de Alexa+.
 
-El botón **Open shared screen** abre la web con `?host=<conversation_id>`. Esa vista muestra el turno actual y los paneles públicos ya jugados, se actualiza por `GET /api/host/conversations/:id/events` (SSE) y permite descargar un SVG o imprimirlo como PDF. Los snapshots viejos no reemplazan uno con una revisión superior. La pantalla no muestra el transcript privado del grupo, los secretos del GM ni la aventura no recorrida.
+El botón **Open shared screen** abre la web con `?host=<conversation_id>`. Esa vista muestra el turno actual y los paneles públicos ya jugados, se actualiza por `GET /api/host/conversations/:id/events` (SSE) y permite descargar PNG/SVG o imprimir como PDF. El arte atmosférico procedural se obtiene sólo para revisiones ya públicas y se integra en el cómic. Los snapshots viejos no reemplazan uno con una revisión superior. La pantalla no muestra el transcript privado del grupo, los secretos del GM ni la aventura no recorrida.
 
 ## Autoridad y datos
 

@@ -63,6 +63,22 @@ function responseConversation(record: PersistedConversation) {
 
 function responseError(error: PublicError): HostResponse { return HostResponseSchema.parse(error); }
 
+/** Speak only facts from the committed public result, even if the language model becomes unavailable. */
+function narratePublicTurn(turn: PublicTurn): string {
+  const es = turn.locale === 'es';
+  const outcome = turn.recent_outcome;
+  const roll = outcome?.kind === 'check'
+    ? `d20: ${outcome.total} · DC ${outcome.difficulty_class}. ${outcome.result === 'success' ? (es ? 'Éxito.' : 'Success.') : (es ? 'Contratiempo.' : 'Setback.')}`
+    : '';
+  const check = turn.pending_check
+    ? `${turn.pending_check.prompt} ${es ? 'Cuando estéis listos, tirad el d20.' : 'When you are ready, roll the d20.'}`
+    : '';
+  const parts = [roll, turn.narration, check].filter(Boolean);
+  const summary = outcome?.summary;
+  if (summary && summary !== turn.narration && parts.join('\n').length + summary.length + 1 <= 2000) parts.splice(roll ? 1 : 0, 0, summary);
+  return parts.join('\n');
+}
+
 function asTurnResult(result: Record<string, unknown>): PublicTurn | PublicError {
   const structured = result.structuredContent;
   if (result.isError) {
@@ -279,7 +295,7 @@ export class ConversationHost {
     if (isError(next)) return responseError(next);
     if (next.session_id !== record.session_id) return responseError(publicError('INTERNAL_ERROR', 'The game service returned a different session.'));
     if (next.revision !== turn.revision + 1) return responseError(publicError('REVISION_CONFLICT', 'The game service returned an unexpected revision.', true, next.revision));
-    return HostResponseSchema.parse({ kind: 'turn', conversation: responseConversation(record), turn: next, assistant_text: next.narration });
+    return HostResponseSchema.parse({ kind: 'turn', conversation: responseConversation(record), turn: next, assistant_text: narratePublicTurn(next) });
   }
 
   async createConversation(input: unknown): Promise<HostResponse> {
@@ -291,7 +307,7 @@ export class ConversationHost {
         const existing = await this.store.get(conversationId);
         if (existing.create_fingerprint !== fingerprint) return responseError(publicError('IDEMPOTENCY_KEY_REUSED', 'request_id was already used to create a different conversation.'));
         return existing.turn
-          ? HostResponseSchema.parse({ kind: 'turn', conversation: responseConversation(existing), turn: existing.turn, assistant_text: existing.turn.narration })
+          ? HostResponseSchema.parse({ kind: 'turn', conversation: responseConversation(existing), turn: existing.turn, assistant_text: narratePublicTurn(existing.turn) })
           : HostResponseSchema.parse({ kind: 'message', conversation: responseConversation(existing), assistant_text: this.welcome(existing.conversation.locale) });
       } catch (error) { if (!(error instanceof ConversationStoreError) || error.code !== 'NOT_FOUND') throw error; }
 
@@ -319,7 +335,7 @@ export class ConversationHost {
       };
       await this.store.create(record);
       return turn
-        ? HostResponseSchema.parse({ kind: 'turn', conversation: responseConversation(record), turn, assistant_text: turn.narration })
+        ? HostResponseSchema.parse({ kind: 'turn', conversation: responseConversation(record), turn, assistant_text: narratePublicTurn(turn) })
         : HostResponseSchema.parse({ kind: 'message', conversation: responseConversation(record), assistant_text: this.welcome(request.locale) });
     } catch (error) {
       this.trace({ component: 'conversation', outcome: 'error', code: error instanceof ConversationStoreError ? error.code : 'create_failed' });
@@ -331,6 +347,18 @@ export class ConversationHost {
     return locale === 'es'
       ? '¿Qué tipo de aventura os gustaría jugar y cómo se llaman los jugadores?'
       : 'What kind of adventure would you like to play, and what are the players’ names?';
+  }
+
+  /** Restoring is a read, not a second create with a potentially different session fingerprint. */
+  async restoreConversation(conversationId: string): Promise<HostResponse> {
+    try {
+      const record = await this.store.get(conversationId);
+      return record.turn
+        ? HostResponseSchema.parse({ kind: 'turn', conversation: responseConversation(record), turn: record.turn, assistant_text: narratePublicTurn(record.turn) })
+        : HostResponseSchema.parse({ kind: 'message', conversation: responseConversation(record), assistant_text: this.welcome(record.conversation.locale) });
+    } catch (error) {
+      return responseError(publicError(error instanceof ConversationStoreError && error.code === 'NOT_FOUND' ? 'NOT_FOUND' : 'INTERNAL_ERROR', 'The conversation could not be restored.', !(error instanceof ConversationStoreError && error.code === 'NOT_FOUND')));
+    }
   }
 
   async turn(conversationId: string, input: unknown, signal?: AbortSignal): Promise<HostResponse> {
@@ -356,9 +384,9 @@ export class ConversationHost {
           }
           const latest = asTurnResult(await this.mcp.call('get_session', { session_id: record.session_id }, signal));
           if (isError(latest)) return { record, value: responseError(latest) };
-          if (latest.session_id !== record.session_id) return { record, value: responseError(publicError('INTERNAL_ERROR', 'MCP returned a different session.', false)) };
+          if (latest.session_id !== record.session_id || latest.locale !== record.conversation.locale) return { record, value: responseError(publicError('INTERNAL_ERROR', 'MCP returned a different session or locale.', false)) };
           if (latest.revision !== record.turn.revision) {
-            const updated = { ...record, turn: latest, summary: latest.recap, updated_at: this.now() };
+            const updated = this.withPublicTurn(record, latest);
             return { record: updated, value: responseError(publicError('REVISION_CONFLICT', 'The session changed; its latest turn has been restored. Retry with the current revision.', true, latest.revision)) };
           }
         } else if (request.expected_revision !== undefined) {
@@ -374,7 +402,7 @@ export class ConversationHost {
           return { record, value: responseError(publicError('INTERNAL_ERROR', error instanceof McpGatewayError ? 'The game service could not be reached.' : 'The conversational model could not complete this turn.', true)) };
         }
       });
-      if (response.kind === 'turn' || response.kind === 'clarification') await this.publishPublicState(conversationId);
+      if (response.kind === 'turn' || response.kind === 'clarification' || (response.kind === 'error' && response.code === 'REVISION_CONFLICT')) await this.publishPublicState(conversationId);
       return response;
     } catch (error) {
       this.trace({ component: 'conversation', outcome: 'error', code: error instanceof ConversationStoreError ? error.code : 'read_failed' });
@@ -456,9 +484,10 @@ export class ConversationHost {
         if (!paused && record.session_id) {
           const latest = asTurnResult(await this.mcp.call('get_session', { session_id: record.session_id }));
           if (isError(latest)) return { record, value: responseError(latest) };
+          if (latest.session_id !== record.session_id || latest.locale !== record.conversation.locale) return { record, value: responseError(publicError('INTERNAL_ERROR', 'MCP returned a different session or locale.')) };
           turn = latest;
         }
-        const next = { ...record, paused, turn: turn ?? null, summary: turn?.recap ?? record.summary, updated_at: this.now() };
+        const next = { ...(turn ? this.withPublicTurn(record, turn) : record), paused, updated_at: this.now() };
         const message = paused
           ? (record.conversation.locale === 'es' ? 'Partida en pausa. Tu progreso está guardado.' : 'The session is paused. Your progress is saved.')
           : (record.conversation.locale === 'es' ? 'La partida está lista para continuar.' : 'The session is ready to continue.');
@@ -476,6 +505,14 @@ export class ConversationHost {
 
   private withRecord(record: PersistedConversation, requestId: string, fingerprint: string, response: HostResponse): PersistedConversation {
     return { ...record, idempotency: [...record.idempotency, { request_id: requestId, fingerprint, response }].slice(-100), updated_at: this.now() };
+  }
+
+  private withPublicTurn(record: PersistedConversation, turn: PublicTurn): PersistedConversation {
+    const turns = record.public_turns ?? [];
+    const last = turns.at(-1);
+    const publicTurns = !last || turn.revision > last.revision ? [...turns, turn].slice(-40)
+      : turn.revision === last.revision ? [...turns.slice(0, -1), turn] : turns;
+    return { ...record, turn, public_turns: publicTurns, summary: turn.recap, updated_at: this.now() };
   }
 
   private applyCompletion(record: PersistedConversation, requestId: string, fingerprint: string, userText: string, completion: { response: HostResponse; playerNames?: string[]; catalogue?: AdventureSummary[]; offeredAdventureIds?: string[] }): PersistedConversation {
@@ -536,7 +573,8 @@ export class ConversationHost {
       return { response: HostResponseSchema.parse({ kind: 'clarification', conversation: responseConversation(record), turn: record.turn, question: clarification }), catalogue: record.catalogue };
     }
     const pendingPreparation = this.latestPreparation(record)?.status === 'pending';
-    if (!record.session_id && !pendingPreparation && isExplicitNewAdventureRequest(userText, record.conversation.locale)) {
+    const selectedAdventure = !record.session_id ? resolvePlayerAdventureSelection(record.offered_adventure_ids, userText, record.catalogue) : undefined;
+    if (!record.session_id && !pendingPreparation && !selectedAdventure && isExplicitNewAdventureRequest(userText, record.conversation.locale)) {
       const startedAt = Date.now();
       const result = await this.mcp.call('prepare_adventure', {
         request_id: requestId, premise: userText, locale: record.conversation.locale, preferences: {},
@@ -559,17 +597,23 @@ export class ConversationHost {
     const current = record.turn ? `Current public turn JSON (authoritative): ${JSON.stringify(record.turn)}` : 'No game session exists yet.';
     const operationContext = pendingOperation?.status === 'pending'
       ? `A preparation is pending and owned by this conversation: ${JSON.stringify({ operation_id: pendingOperation.operation_id, kind: pendingOperation.kind, status: pendingOperation.status })}. Use get_operation_status to check it if asked; do not prepare it again.`
+      : pendingOperation?.status === 'ready' && pendingOperation.result.kind === 'adventure'
+        ? `A story was already prepared successfully: ${JSON.stringify(pendingOperation.result)}. It is ready in the catalogue. Starting it does not require another preparation.`
+      : '';
+    const selectionContext = selectedAdventure
+      ? `The players explicitly selected this already offered adventure: ${JSON.stringify(selectedAdventure)}. Use start_session for it with the names they supplied, or ask for missing names. Do not prepare a new adventure.`
       : '';
     const messages: OllamaMessage[] = [
-      { role: 'system', content: `${prompt}\n\nConversation recap (player-visible only): ${record.summary || '(none)'}\n${current}\n${operationContext}` },
+      { role: 'system', content: `${prompt}\n\nConversation recap (player-visible only): ${record.summary || '(none)'}\n${current}\n${operationContext}\n${selectionContext}` },
       ...record.history.slice(-MAX_HISTORY),
       { role: 'user', content: userText },
     ];
-    const available = await this.availableTools(record);
+    const available = await this.availableTools(record, Boolean(selectedAdventure));
     let catalogue = record.catalogue;
     let mutationSeen = false;
     let callsUsed = 0;
     let playerNames: string[] | undefined;
+    let selectionRetried = false;
     const deadline = Date.now() + HOST_TURN_TIMEOUT_MS;
     for (let round = 0; round < HOST_MAX_MODEL_ROUNDS; round++) {
       if (signal?.aborted || Date.now() >= deadline) throw new OllamaError('timeout', 'The conversational turn timed out.');
@@ -579,6 +623,17 @@ export class ConversationHost {
       this.trace({ component: 'ollama', outcome: 'ok', elapsed_ms: Date.now() - started });
       const calls = answer.tool_calls;
       if (calls.length === 0) {
+        if (selectedAdventure && !record.session_id) {
+          if (!selectionRetried && round < HOST_MAX_MODEL_ROUNDS - 2) {
+            selectionRetried = true;
+            messages.push({ role: 'system', content: 'The players have already explicitly selected the offered adventure. Do not ask for another confirmation or narrate a start without a tool result. Call start_session with the player names already supplied, or ask_clarification only if names are missing.' });
+            continue;
+          }
+          const assistantText = record.conversation.locale === 'es'
+            ? `Habéis elegido «${selectedAdventure.title}». Decidme los nombres de los jugadores para iniciar esa aventura.`
+            : `You chose “${selectedAdventure.title}”. Tell me the players’ names to start that adventure.`;
+          return { response: HostResponseSchema.parse({ kind: 'message', conversation: responseConversation(record), assistant_text: assistantText }), catalogue, offeredAdventureIds: [selectedAdventure.id] };
+        }
         const text = redactSecrets(answer.content).trim();
         if (!text) throw new OllamaError('invalid_response', 'The model returned no player-facing text.');
         const offeredAdventureIds = catalogue.filter((adventure) => phraseIncluded(adventure.title, text) || phraseIncluded(adventure.id, text)).map((adventure) => adventure.id);
@@ -666,17 +721,13 @@ export class ConversationHost {
         }
       }
       if (mutationSeen) {
-        const startedAt = Date.now();
-        const final = await this.ollama.chat({ messages, tools: [], signal: AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(Math.max(1, deadline - Date.now()))]) });
-        this.trace({ component: 'ollama', outcome: 'ok', elapsed_ms: Date.now() - startedAt });
-        const text = redactSecrets(final.content).trim();
-        if (!text) throw new OllamaError('invalid_response', 'The model returned no player-facing text after the game action.');
+        // The mutation is already durable in MCP. A second model call could fail, orphan a new
+        // session or invent an outcome; commit and narrate the canonical result immediately.
         const latestTurn = this.turnFromToolMessages(messages, record.turn);
         if (!latestTurn) throw new OllamaError('invalid_response', 'No public game turn followed the mutation.');
-        const offeredAdventureIds = catalogue.filter((adventure) => phraseIncluded(adventure.title, text) || phraseIncluded(adventure.id, text)).map((adventure) => adventure.id);
         return {
-          response: HostResponseSchema.parse({ kind: 'turn', conversation: { ...responseConversation(record), session_id: latestTurn.session_id }, turn: latestTurn, assistant_text: text.slice(0, 2000) }),
-          catalogue, offeredAdventureIds, ...(playerNames ? { playerNames } : {}),
+          response: HostResponseSchema.parse({ kind: 'turn', conversation: { ...responseConversation(record), session_id: latestTurn.session_id }, turn: latestTurn, assistant_text: narratePublicTurn(latestTurn) }),
+          catalogue, ...(playerNames ? { playerNames } : {}),
         };
       }
     }
@@ -695,12 +746,15 @@ export class ConversationHost {
     return prior;
   }
 
-  private async availableTools(record: PersistedConversation): Promise<OllamaTool[]> {
+  private async availableTools(record: PersistedConversation, selectingAdventure = false): Promise<OllamaTool[]> {
     const found = await this.mcp.ollamaTools();
-    const allowed = new Set(['list_adventures']);
+    const allowed = new Set<string>(selectingAdventure ? [] : ['list_adventures']);
     const latestOperation = this.latestPreparation(record);
     if (latestOperation?.status === 'pending') allowed.add('get_operation_status');
-    if (!record.session_id) { allowed.add('prepare_adventure'); allowed.add('start_session'); }
+    if (!record.session_id) {
+      if (!selectingAdventure && latestOperation?.status !== 'pending') allowed.add('prepare_adventure');
+      allowed.add('start_session');
+    }
     if (record.session_id && record.turn) {
       allowed.add('get_session');
       if (record.turn.phase === 'awaiting_choice') allowed.add('submit_action');
@@ -731,6 +785,8 @@ export class ConversationHost {
     }
     if (name === 'prepare_adventure') {
       if (mutationPending || record.session_id) return { error: publicError('INVALID_INPUT', 'Adventure preparation is not available during a session.') };
+      if (this.latestPreparation(record)?.status === 'pending') return { error: publicError('OPERATION_PENDING', 'This conversation already has a pending preparation.') };
+      if (resolvePlayerAdventureSelection(record.offered_adventure_ids, userText, catalogue)) return { error: publicError('INVALID_INPUT', 'The players selected an offered adventure. Start it or clarify the player names instead of preparing another story.') };
       const parsed = PrepareAdventureRequestSchema.safeParse({ ...input, request_id: requestId, locale: record.conversation.locale });
       return parsed.success ? { args: parsed.data } : { error: publicError('INVALID_INPUT', 'The preparation request was incomplete.') };
     }

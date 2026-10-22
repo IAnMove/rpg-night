@@ -28,6 +28,7 @@ test('host HTTP routes forward create, turn, pause and resume through the conver
   };
   const host: HostController = {
     async createConversation(input) { calls.push({ method: 'create', input }); return response(); },
+    async restoreConversation(id) { calls.push({ method: 'restore', id }); return response(); },
     async turn(id, input, signal) { calls.push({ method: 'turn', id, input, signal }); return response(); },
     async pause(id, input) { calls.push({ method: 'pause', id, input }); return response(true); },
     async resume(id, input) { calls.push({ method: 'resume', id, input }); return response(false); },
@@ -50,6 +51,10 @@ test('host HTTP routes forward create, turn, pause and resume through the conver
   const created = await post('/api/host/conversations', { request_id: requestId, locale: 'es' });
   assert.equal(created.status, 201);
   assert.equal((await created.json() as HostResponse).kind, 'message');
+  const restored = await fetch(`${base}/api/host/conversations/${conversationId}`);
+  assert.equal(restored.status, 200);
+  assert.equal((await restored.json() as HostResponse).kind, 'message');
+  assert.equal(calls.at(-1)?.method, 'restore');
 
   const input = { request_id: '33333333-3333-4333-8333-333333333333', text: 'Muéstranos las aventuras' };
   const turn = await post(`/api/host/conversations/${conversationId}/turns`, input);
@@ -109,4 +114,30 @@ test('host routes report when conversational mode is disabled', async t => {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ request_id: requestId, locale: 'es' }),
   });
   assert.equal(response.status, 503);
+});
+
+test('host illustrations resolve only already public revisions and never arbitrary or future scenes', async t => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'rpg-host-art-'));
+  const turn = {
+    schema_version: 2 as const, session_id: requestId, locale: 'en' as const, revision: 1, view_revision: 1,
+    phase: 'ended' as const, scene_id: 'public-bridge', narration: 'The party crosses the moonlit bridge.',
+    choices: [], affordances: [], pending_check: null, recent_outcome: null, inventory: [], recap: '', next_expected_input: '', visual_status: 'ready' as const,
+  };
+  const host = {
+    getPublicState: async (id: string) => id === conversationId ? { conversation_id: id, locale: 'en' as const, session_id: requestId, paused: false, turn, turns: [turn] } : null,
+  } as HostController;
+  const config = readConfig({ DATA_DIR: dir });
+  const game = new Game(config); await game.init();
+  const app = createApp(config, game, undefined, host); app.use(errorHandler);
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise<void>(resolve => server.once('listening', resolve));
+  const address = server.address(); assert.ok(address && typeof address !== 'string');
+  t.after(async () => { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); await rm(dir, { recursive: true, force: true }); });
+  const base = `http://127.0.0.1:${address.port}/api/host/conversations/${conversationId}/art`;
+  const visible = await fetch(`${base}/1.svg`);
+  assert.equal(visible.status, 200);
+  assert.match(visible.headers.get('content-type') ?? '', /image\/svg\+xml/);
+  assert.match(await visible.text(), /storybook landscape/);
+  assert.equal((await fetch(`${base}/2.svg`)).status, 404);
+  assert.equal((await fetch(`${base}/unplayed-ending.svg`)).status, 400);
 });

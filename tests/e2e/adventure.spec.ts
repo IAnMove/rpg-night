@@ -1,7 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { readFile } from 'node:fs/promises';
 
 test('Spanish adventure, second TV, persistence and comic exports work in the production app', async ({ page, context }) => {
+  // Observe the actual downloaded Blob; managed Chrome files can be unreadable to Node on Windows.
+  await page.addInitScript(() => {
+    const original = URL.createObjectURL.bind(URL);
+    URL.createObjectURL = value => {
+      if (value instanceof Blob && value.type === 'image/png') (window as Window & { exportedPng?: Blob }).exportedPng = value;
+      return original(value);
+    };
+  });
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto('/'); await expect(page.locator('#landing')).toBeVisible();
   await page.locator('#landing [data-lang="es"]').click();
@@ -28,8 +35,16 @@ test('Spanish adventure, second TV, persistence and comic exports work in the pr
   await expect(page.locator('#comic-grid img')).toHaveCount(6);
   const pngEvent = page.waitForEvent('download'); await page.locator('#download-png').click();
   const png = await pngEvent; expect(png.suggestedFilename()).toMatch(/\.png$/);
-  expect(await png.failure()).toBeNull(); const pngPath = await png.path(); expect(pngPath).toBeTruthy();
-  expect((await readFile(pngPath!)).subarray(1, 4).toString()).toBe('PNG');
+  expect(await png.failure()).toBeNull();
+  const pngData = await page.evaluate(async () => {
+    const blob = (window as Window & { exportedPng?: Blob }).exportedPng;
+    if (!blob) throw new Error('No PNG was exported');
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const image = await createImageBitmap(blob);
+    return { signature: Array.from(bytes.subarray(0, 8)), width: image.width, height: image.height };
+  });
+  expect(pngData.signature).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+  expect(pngData.width).toBeGreaterThan(1000); expect(pngData.height).toBeGreaterThan(1000);
   const svgEvent = page.waitForEvent('download'); await page.locator('#download-svg').click();
   const svg = await svgEvent; expect(svg.suggestedFilename()).toMatch(/\.svg$/); expect(await svg.failure()).toBeNull();
   await page.emulateMedia({ media: 'print' }); const pdf = await page.pdf({ format: 'A4', printBackground: true });

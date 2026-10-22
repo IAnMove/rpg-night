@@ -1,5 +1,19 @@
 import type { World } from '../shared/types.js';
+import type { PublicTurn } from '../shared/session-schema.js';
 export function xml(value: string): string { return value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]!)); }
+
+/** Atmospheric procedural art derived solely from the scene already visible to the players. */
+export function publicSceneArt(turn: PublicTurn): string {
+  const visible = `${turn.scene_id} ${turn.narration}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const world: World = /\b(starship|spaceship|space|planet|orbit|galaxy|station|nave|espacio|planeta|orbita|galaxia|estacion)\b/.test(visible) ? 'space'
+    : /\b(mansion|clock|mystery|detective|museum|reloj|misterio|museo)\b/.test(visible) ? 'mystery' : 'fantasy';
+  let hash = 0;
+  for (const char of turn.scene_id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  // Motifs describe an atmosphere, not an additional event or a model-generated literal depiction.
+  const chapter = world === 'fantasy' && /\b(bridge|puente)\b/.test(visible) ? 2
+    : world === 'fantasy' && /\b(market|mercado)\b/.test(visible) ? 3 : 1;
+  return sceneArt(world, chapter, hash % 100);
+}
 
 /** Local, deliberately illustrated demo art. Bedrock replaces this with model output. */
 export function sceneArt(world: World, chapter = 1, variant = 0): string {
