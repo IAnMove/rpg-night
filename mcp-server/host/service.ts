@@ -151,18 +151,25 @@ function explicitOrdinal(text: string): number | undefined {
 const DIRECT_CHOICE_INTENT = /\b(?:i|we)\s+(?:explicitly\s+)?(?:choose|select|pick|take)\b|\b(?:let's|lets)\s+take\b|\bgo\s+with\b|\b(?:elijo|elegimos|escojo|escogemos|selecciono|seleccionamos|tomamos)(?:\s+explícitamente)?\b|\b(?:vamos\s+con|me\s+quedo\s+con|nos\s+quedamos\s+con)\b|\b(?:choose|select|pick|take|elige|elegid|elijan|selecciona|seleccionad|escojamos|elijamos)\s+(?:option|choice|opción|opcion)\b/i;
 const NEGATED_CHOICE_INTENT = /\b(?:don't|do not|never|can't|cannot|shouldn't|should not|not)\b.{0,80}\b(?:choose|select|pick|take)\b|\bno\s+(?:elijas|elijamos|eligen|elegimos|elegir|selecciones|seleccionemos|seleccionan|seleccionamos|escojas|escojamos|escogemos)\b/i;
 const QUESTION_INTENT = /[?¿]|^\s*(?:should|could|would|can|may|do|deberíamos|podemos|podría|conviene)\b/i;
-/** Resolve only an unambiguous affirmative ordinal choice; free-form intent remains with the host model. */
+/** Exact public labels and affirmative ordinals need no model interpretation. */
 export function resolveExplicitPlayerChoice(turn: PublicTurn, text: string) {
   if (turn.phase !== 'awaiting_choice' || QUESTION_INTENT.test(text) || NEGATED_CHOICE_INTENT.test(text) || !DIRECT_CHOICE_INTENT.test(text)) return undefined;
+  const directive = text.trim().match(DIRECT_CHOICE_INTENT);
+  if (directive?.index === 0) {
+    const normalize = (value: string) => value.replace(/^[\s:«"“]+|[\s.!»"”]+$/gu, '').toLowerCase();
+    const label = normalize(text.trim().slice(directive[0].length));
+    const matches = turn.choices.filter(choice => normalize(choice.label) === label);
+    if (matches.length) return matches.length === 1 ? matches[0] : undefined;
+  }
   const ordinal = explicitOrdinal(text);
   if (ordinal === undefined || ordinal > turn.choices.length) return undefined;
   return turn.choices[ordinal - 1];
 }
 
-const DIRECT_CHECK_INTENT = /\b(?:resolve|roll|make)\s+(?:the\s+)?(?:pending\s+)?(?:d20\s+)?check\b|\b(?:resuelve|resolvamos|tiramos|tira|haz|hagamos)\s+(?:(?:ahora|ya)\s+)?(?:la\s+)?(?:tirada|comprobación|comprobacion)\b/i;
+const DIRECT_CHECK_INTENT = /\b(?:resolve|roll|make)\s+(?:the\s+)?(?:pending\s+)?(?:d20\s+)?check\b|\b(?:roll|throw)\s+(?:the\s+)?(?:die|dice|d20)\b|\b(?:resuelve|resolvamos|tiramos|tira|haz|hagamos)\s+(?:(?:ahora|ya)\s+)?(?:la\s+)?(?:tirada|comprobación|comprobacion)\b|\b(?:tiramos|tira|tirad|lanza|lanzamos)\s+(?:el\s+)?(?:dado|d20)\b/i;
 export function hasExplicitCheckIntent(turn: PublicTurn, text: string): boolean {
   return turn.phase === 'awaiting_check' && turn.pending_check !== null && !QUESTION_INTENT.test(text)
-    && !/\b(?:don't|do not|never|can't|cannot|not)\b.{0,80}\b(?:resolve|roll|make)\b|\bno\s+(?:resuelvas|resolvamos|tires|hagamos)\b/i.test(text)
+    && !/\b(?:don't|do not|never|can't|cannot|not)\b.{0,80}\b(?:resolve|roll|throw|make)\b|\bno\s+(?:resuelvas|resolvamos|tires|tiramos|tira|tirad|lances|lanza|lanzamos|hagamos)\b/i.test(text)
     && DIRECT_CHECK_INTENT.test(text);
 }
 export function resolvePlayerAdventureSelection(offeredAdventureIds: string[], text: string, catalogue: AdventureSummary[]): AdventureSummary | undefined {

@@ -1,5 +1,28 @@
 # Verification
 
+## Private LAN model deployment — October 23, 2026
+
+The application now accepts an operator-configured Ollama HTTP origin on a private RFC1918 IPv4
+address as well as loopback. The canonical MCP connection remains loopback-only. Regression checks
+reject public/metadata hosts, URL credentials and paths/queries/fragments; **90/90** deterministic
+tests and the production build passed after this change and the exact-choice/dice fixes.
+
+A separate compiled server and synthetic data completed **La campana bajo Elderglen** in Spanish
+using `llama3.2:3b` served by Ollama on another LAN computer. Eight conversational requests reached
+revision 7 and an authored ending, including a pending d20; the public TV history and SVG export agreed.
+The first catalogue request took 31.9 s including cold setup; selecting and starting took 4.8 s.
+The six subsequent exact choices/dice commands used canonical MCP without inference and took 20–25 ms
+inside the same computer. These are one-run observations, not latency guarantees.
+
+The trial with `qwen3.5:9b` exposed a verbatim choice being narrated without committing it. Exact public
+labels now take the same authoritative shortcut as numbered choices, with question/negation/ambiguity
+regressions. Larger installed models used tools but had longer loading/inference times in this setup.
+This LAN smoke test does not certify arbitrary free-form interpretation, generated prose or microphone
+input. Local reports/data remain ignored under `.work/lan-llm/`; `.env` is deployment configuration and
+must stay untracked. The earlier browser/export review below remains the dated evidence for the UI.
+
+## Commands and coverage
+
 ```sh
 npm ci
 npm test

@@ -165,6 +165,22 @@ test('an explicit numbered choice commits the authoritative MCP turn without tru
   });
 });
 
+test('a verbatim public choice commits without waiting for or trusting the model', async t => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'rpg-host-label-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const before = gameTurn(3);
+  const after = gameTurn(4, 'The door opens into a quiet courtyard.');
+  const { mcp, calls } = mcpMock(before, after);
+  const ollama = { chat: async () => { throw new Error('No inference is needed for an exact public choice.'); } } as unknown as OllamaClient;
+  const host = await linkedHost(t, ollama, mcp, dir);
+  const response = await host.turn(conversationId, { request_id: turnRequestId, text: 'We choose: Open the stone door.', expected_revision: 3 });
+  assert.equal(response.kind, 'turn');
+  if (response.kind !== 'turn') assert.fail('expected committed public turn');
+  assert.equal(response.turn.revision, 4);
+  assert.equal(response.assistant_text, after.narration);
+  assert.equal(calls.filter(call => call.name === 'submit_action').length, 1);
+});
+
 test('the model receives current flat action IDs and its free action is validated before MCP submission', async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'rpg-host-flat-action-'));
   t.after(() => rm(dir, { recursive: true, force: true }));

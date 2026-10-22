@@ -72,6 +72,13 @@ MCP service. The server-side host discovers tools with `tools/list` and calls th
 endpoint through the official TypeScript SDK. See [presentation](presentacion.md), the
 [execution plan](plan-ejecucion.md), and [current feasibility and evidence](docs/feasibility.md).
 
+Ollama can also run on another trusted computer in your home network. Set `OLLAMA_BASE_URL` to its
+private IPv4 origin (for example `http://10.20.30.20:11434`) and `OLLAMA_MODEL` to an installed model
+that supports tools, then restart RPG Night. The browser talks only to RPG Night; the server calls
+Ollama. Model endpoints accept loopback or private IPv4 HTTP addresses; the internal `RPG_MCP_URL`
+remains loopback-only. Thinking output is disabled for interactive responses. See
+[deployment](docs/DEPLOYMENT.md#ollama-on-another-lan-computer) for the complete configuration.
+
 In Local host mode, **Open shared screen** opens a read-only view of the current public turn and played
 story panels. Controller, TV and SVG comic share original procedural atmospheric illustrations derived
 only from already public scenes. These are not model-generated images or extra story facts. The screen

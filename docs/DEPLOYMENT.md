@@ -24,11 +24,37 @@ Open http://localhost:3000. For Bedrock, pass settings with `--env-file .env` an
 runtime IAM role or secure credential mechanism. Do not bake credentials into the image.
 
 This portable container example runs the classic game. The full conversational demo is simplest with
-Node and Ollama running on the same machine. In a container, `127.0.0.1:11434` means the container itself;
-the local-only Ollama adapter does not accept `host.docker.internal` or an arbitrary remote model URL.
-To use the host from Docker, Ollama must share the container's loopback network (for example a deliberate
-host-network setup on a supporting platform), and `HOST_MODE=ollama` must be enabled. The final review
-could not execute Docker because Docker Desktop's Linux engine was not running.
+Node and Ollama running on the same machine or trusted private LAN. In a container, `127.0.0.1:11434`
+means the container itself. Configure a reachable private IPv4 address for Ollama on the LAN and enable
+`HOST_MODE=ollama`; `host.docker.internal` and public model URLs are not accepted by this adapter.
+The final review could not execute Docker because Docker Desktop's Linux engine was not running.
+
+## Ollama on another LAN computer
+
+The application and model may run on separate computers. For example, RPG Night on `.104` and Ollama
+on `.115`, put these settings in the application's ignored `.env` file and restart `npm start`:
+
+```dotenv
+HOST=0.0.0.0
+PORT=3000
+PUBLIC_ORIGIN=http://10.20.30.10:3000
+HOST_MODE=ollama
+OLLAMA_BASE_URL=http://10.20.30.20:11434
+OLLAMA_MODEL=llama3.2:3b
+PROVIDER=demo
+DATA_DIR=./data
+```
+
+Use an installed model that supports tool calling. Verify `http://10.20.30.20:11434/api/tags` from the
+application computer first; the example does not install a model. If Ollama is listening only on loopback,
+configure its `OLLAMA_HOST` and firewall for the trusted LAN before restarting Ollama. Keep inference
+off the public internet. The model URL is server configuration, never player input: only HTTP loopback
+and RFC1918 private IPv4 origins are accepted, without credentials, paths, queries or fragments.
+`RPG_MCP_URL` remains local to the application and derives from `PORT` when omitted.
+
+No browser CORS change is needed: the browser sends text to RPG Night, and RPG Night calls Ollama.
+Thinking output is disabled to keep the model focused on the response/tool call. A cold model can still
+take time to load; warm it with a short conversation before recording. Text play works over LAN HTTP.
 
 ## Phone/controller and shared TV
 

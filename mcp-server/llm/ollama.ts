@@ -29,6 +29,27 @@ export function assertLocalHttpUrl(raw: string, label: string): string {
   return url.origin;
 }
 
+/** The configured model may run on another computer in the trusted private LAN. */
+export function assertOllamaHttpUrl(raw: string): string {
+  let url: URL;
+  try { url = new URL(raw); } catch { throw new Error('OLLAMA_BASE_URL must be a valid URL.'); }
+  const host = url.hostname.toLowerCase();
+  const octets = /^\d+\.\d+\.\d+\.\d+$/.test(host) ? host.split('.').map(Number) : [];
+  const privateIpv4 = octets.length === 4 && (
+    octets[0] === 10 ||
+    (octets[0] === 172 && octets[1]! >= 16 && octets[1]! <= 31) ||
+    (octets[0] === 192 && octets[1] === 168)
+  );
+  const loopback = ['127.0.0.1', 'localhost', '[::1]', '::1'].includes(host);
+  if (url.protocol !== 'http:' || (!loopback && !privateIpv4)) {
+    throw new Error('OLLAMA_BASE_URL must use HTTP on loopback or a private LAN IPv4 address.');
+  }
+  if (url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+    throw new Error('OLLAMA_BASE_URL must be an origin without credentials, a path, query or fragment.');
+  }
+  return url.origin;
+}
+
 export class OllamaClient {
   readonly baseUrl: string;
   readonly model: string;
@@ -36,7 +57,7 @@ export class OllamaClient {
   private readonly fetcher: typeof fetch;
 
   constructor(options: { baseUrl?: string; model?: string; timeoutMs?: number; fetcher?: typeof fetch } = {}) {
-    this.baseUrl = assertLocalHttpUrl(options.baseUrl ?? process.env.OLLAMA_BASE_URL ?? DEFAULT_OLLAMA_URL, 'OLLAMA_BASE_URL');
+    this.baseUrl = assertOllamaHttpUrl(options.baseUrl ?? process.env.OLLAMA_BASE_URL ?? DEFAULT_OLLAMA_URL);
     this.model = options.model ?? process.env.OLLAMA_MODEL ?? DEFAULT_OLLAMA_MODEL;
     this.timeoutMs = options.timeoutMs ?? OLLAMA_TIMEOUT_MS;
     this.fetcher = options.fetcher ?? fetch;
@@ -49,7 +70,7 @@ export class OllamaClient {
     try {
       response = await this.fetcher(`${this.baseUrl}/api/chat`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
-        body: JSON.stringify({ model: this.model, stream: false, messages: input.messages, ...(input.tools ? { tools: input.tools } : {}), ...(input.format ? { format: input.format } : {}) }),
+        body: JSON.stringify({ model: this.model, stream: false, think: false, messages: input.messages, ...(input.tools ? { tools: input.tools } : {}), ...(input.format ? { format: input.format } : {}) }),
       });
     } catch (error) {
       const timeout = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');

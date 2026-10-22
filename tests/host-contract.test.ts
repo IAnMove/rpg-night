@@ -87,13 +87,21 @@ test('free actions and choices are checked against the current public turn', () 
   assert.equal(validateInteractionAgainstTurn({ ...turn, phase: 'awaiting_check', choices: [], pending_check: { id: 'check-x', kind: 'd20', difficulty_class: 11, prompt: 'Test' } }, { kind: 'choice', choice_id: 'open-door', action_text: 'Open' }, 'Open').ok, false);
 });
 
-test('only a clear, affirmative numbered choice is resolved without model interpretation', () => {
+test('only a clear, affirmative numbered or exact-label choice is resolved without model interpretation', () => {
   const turn = publicTurn();
   assert.equal(resolveExplicitPlayerChoice(turn, 'We explicitly choose the first option now: Open the stone door.')?.id, 'open-door');
   assert.equal(resolveExplicitPlayerChoice(turn, 'Choose option 1: Open the stone door.')?.id, 'open-door');
   assert.equal(resolveExplicitPlayerChoice(turn, 'Should we choose option 1?'), undefined);
   assert.equal(resolveExplicitPlayerChoice(turn, 'We do not choose option 1.'), undefined);
   assert.equal(resolveExplicitPlayerChoice(turn, 'We choose option 2.'), undefined);
+  assert.equal(resolveExplicitPlayerChoice(turn, 'We choose: Open the stone door.')?.id, 'open-door');
+  assert.equal(resolveExplicitPlayerChoice(turn, 'We choose: Open the stone door or do something else.'), undefined);
+  assert.equal(resolveExplicitPlayerChoice(turn, 'We do not choose: Open the stone door.'), undefined);
+  const spanish = { ...turn, locale: 'es' as const, choices: [{ id: 'ask-elin', label: 'Preguntar a Elin qué necesita el pueblo' }] };
+  assert.equal(resolveExplicitPlayerChoice(spanish, 'Elegimos: Preguntar a Elin qué necesita el pueblo.')?.id, 'ask-elin');
+  assert.equal(resolveExplicitPlayerChoice(spanish, '¿Elegimos: Preguntar a Elin qué necesita el pueblo?'), undefined);
+  assert.equal(resolveExplicitPlayerChoice(spanish, 'No elegimos: Preguntar a Elin qué necesita el pueblo.'), undefined);
+  assert.equal(resolveExplicitPlayerChoice({ ...spanish, choices: [...spanish.choices, { id: 'duplicate', label: spanish.choices[0]!.label }] }, 'Elegimos: Preguntar a Elin qué necesita el pueblo.'), undefined);
   assert.equal(resolveExplicitPlayerChoice({ ...turn, locale: 'es' }, 'Elegimos explícitamente la primera opción: Abrir la puerta de piedra.' )?.id, 'open-door');
 });
 
@@ -103,6 +111,11 @@ test('a pending check is directly resolved only when the player explicitly asks 
   assert.equal(hasExplicitCheckIntent(turn, 'Resuelve ahora la tirada pendiente.'), true);
   assert.equal(hasExplicitCheckIntent(turn, 'Should we resolve this check?'), false);
   assert.equal(hasExplicitCheckIntent(turn, 'Do not resolve this check yet.'), false);
+  assert.equal(hasExplicitCheckIntent(turn, 'Tiramos el dado.'), true);
+  assert.equal(hasExplicitCheckIntent(turn, 'Roll the dice.'), true);
+  assert.equal(hasExplicitCheckIntent(turn, '¿Tiramos el dado?'), false);
+  assert.equal(hasExplicitCheckIntent(turn, 'No tiramos el dado.'), false);
+  assert.equal(hasExplicitCheckIntent({ ...turn, phase: 'awaiting_choice', pending_check: null }, 'Tiramos el dado.'), false);
 });
 
 test('local provider URL and secret redaction have fail-closed defaults', () => {
