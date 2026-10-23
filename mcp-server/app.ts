@@ -14,6 +14,7 @@ import { OllamaAdventureGenerationProvider } from './generation/ollama-provider.
 import { ConversationIdSchema } from '../shared/host-schema.js';
 import { ConversationHost } from './host/service.js';
 import { McpGateway } from './host/mcp-gateway.js';
+import { AnthropicClient } from './llm/anthropic.js';
 import { OllamaClient } from './llm/ollama.js';
 
 export type HostController = Pick<ConversationHost, 'createConversation' | 'restoreConversation' | 'turn' | 'pause' | 'resume' | 'getPendingOperation'>
@@ -23,7 +24,7 @@ export function createConversationHost(config: Config): ConversationHost | undef
   if (config.hostMode === 'disabled') return undefined;
   return new ConversationHost({
     dataDir: config.dataDir,
-    ollama: new OllamaClient({ baseUrl: config.ollamaBaseUrl, model: config.ollamaModel }),
+    ollama: config.hostMode === 'anthropic' ? new AnthropicClient() : new OllamaClient({ baseUrl: config.ollamaBaseUrl, model: config.ollamaModel }),
     mcp: new McpGateway({ url: config.mcpUrl }),
   });
 }
@@ -57,7 +58,7 @@ export function createApp(
   });
   app.use(express.json({ limit: '24kb' }));
   app.get('/api/health', (_req, res) => res.json({ status: 'ok', version: config.version, provider: config.provider, host_mode: config.hostMode }));
-  app.get('/api/config', (_req, res) => res.json({ version: config.version, provider: config.provider, hostMode: config.hostMode, ollamaModel: config.hostMode === 'ollama' ? config.ollamaModel : undefined, maxScenes: config.maxScenes }));
+  app.get('/api/config', (_req, res) => res.json({ version: config.version, provider: config.provider, hostMode: config.hostMode, ollamaModel: config.hostMode === 'ollama' ? config.ollamaModel : config.hostMode === 'anthropic' ? (process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5-5') : undefined, maxScenes: config.maxScenes }));
   const unavailableHost = (_req: express.Request, res: express.Response) => res.status(503).json({ error: 'The conversational host is disabled.' });
   app.post('/api/host/conversations', host ? async (req, res) => {
     const response = await host.createConversation(req.body);

@@ -5,7 +5,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   HOST: z.string().default('127.0.0.1'),
   PROVIDER: z.enum(['demo', 'bedrock']).default('demo'),
-  HOST_MODE: z.enum(['ollama', 'disabled']).default('ollama'),
+  HOST_MODE: z.enum(['ollama', 'anthropic', 'disabled']).default('ollama'),
   OLLAMA_BASE_URL: z.string().url().default('http://127.0.0.1:11434'),
   OLLAMA_MODEL: z.string().trim().min(1).max(200).default('qwen3:4b-instruct-2507-q4_K_M'),
   OLLAMA_GENERATION_TIMEOUT_MS: z.coerce.number().int().min(10_000).max(240_000).default(120_000),
