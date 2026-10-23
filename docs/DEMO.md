@@ -1,47 +1,51 @@
-# Demo de RPG Night: ensayo y grabación
+# RPG Night — short demo walkthrough
 
-Objetivo: vídeo de **2:40–2:55** que muestre un recorrido conversacional, su pantalla compartida y su cómic. Ruta: **experiencia Alexa+ simulada en navegador**. Revisar acceso y candidatura en [ENTREGA-JAM.md](ENTREGA-JAM.md).
+Target length: **2:45–2:50**. Show the functioning **Alexa+ browser simulation**, using text.
+Use one conversational session for the controller, shared screen and comic.
 
-## Preparar el equipo
+## Prepare
 
-1. Seguir el README desde `codex/complete-mvp`, arrancar Ollama con el modelo indicado y ejecutar `npm run dev`.
-2. Usar Chrome/Edge en localhost o HTTPS si se quiere micrófono. En LAN HTTP funcionan texto y botones.
-3. Abrir una ventana de 1920×1080, seleccionar ES/EN, escribir nombres sintéticos y pulsar **Jugar con el máster local**.
-4. Elegir por título una aventura escrita que ofrezca el catálogo: «Elegimos La campana bajo Elderglen para Ana y Luis». Usar siempre el título que aparezca.
-5. Activar narración si se ha comprobado la voz del equipo. Abrir **Pantalla compartida** y grabarla junto al controlador o en otra toma del mismo juego.
-6. Ensayar hasta un final, incluyendo **Tirar d20** si aparece, y comprobar SVG/PDF. Éxito y contratiempo son resultados válidos; no fingir una tirada.
+1. Follow the README from `main`. Start Ollama and RPG Night.
+2. Record the browser at 1920×1080 on `http://localhost:3000`. Hide notifications and personal data.
+3. Select EN, enter **Ada, Bo**, and open **Play with the local Game Master**.
+4. Rehearse the authored adventure. Keep the actual d20 outcome, whether success or setback.
+5. Warm the model before recording. If you edit out loading time, visibly label the cut.
+6. Text is enough; enable microphone/narration only if checked on the recording computer.
 
-Mantener Ollama en marcha y cerrar notificaciones/datos personales. Usar audio propio y material que se tenga derecho a publicar.
+## Screen plan
 
-## Guion
-
-| Tiempo | Imagen / acción real | Narración sugerida |
+| Time | Show | Suggested English voiceover |
 | --- | --- | --- |
-| 0:00–0:15 | Landing y grupo ante la pantalla. | «Una noche de rol que termina en un cómic de la historia que habéis construido juntos.» |
-| 0:15–0:40 | Entrar al máster, ver catálogo y elegir. | «Esta es nuestra simulación web de una experiencia Alexa+. Un modelo local interpreta al grupo y usa herramientas MCP reales.» |
-| 0:40–1:15 | Proponer una acción, elegir y resolver un d20 pendiente. | «El motor conserva las consecuencias y decide las tiradas. El modelo no puede inventar cambios de estado.» |
-| 1:15–1:40 | TV de la misma sesión y sus viñetas. | «La pantalla sigue los hechos públicos de la partida. El ambiente se ilustra con SVG procedural.» |
-| 1:40–2:10 | Completar la ruta ensayada, mostrar FIN y exportación. | «Nos llevamos un cómic con las decisiones y el desenlace. La historia se conserva al reiniciar.» |
-| 2:10–2:35 | Pedir otra historia y mostrar preparación pendiente/lista. | «Podemos pedir una aventura nueva. Se genera localmente, se valida y sólo empieza cuando la elegimos.» |
-| 2:35–2:50 | Diagrama breve y enlace de rama. | «Navegador, host Ollama, SDK MCP oficial, motor autoritativo y pantalla compartida; todo ejecutable localmente.» |
+| 0:00–0:15 | Landing and the label “Alexa+ browser simulation”. | “What if your next game night started with a conversation and ended with a comic?” |
+| 0:15–0:40 | Open the conversational host, show the offered adventure, and type the explicit selection. | “RPG Night is a cooperative adventure guided by a conversational Game Master. This demo runs in the browser, using a local model and a real MCP server.” |
+| 0:40–1:10 | Type one offered choice and show the changed scene. Advance the rehearsed route. | “The players decide together. The game service validates their choice and saves the result. The language model interprets conversation; the engine owns the rules.” |
+| 1:10–1:35 | Select the lever challenge, show the pending d20, roll, then keep the real result visible. | “Risky actions create a pending check. The server rolls the die once, and either outcome keeps the story moving.” |
+| 1:35–1:55 | Show the shared screen from this same session, then make the final decision. | “Everyone can follow the same public story on a shared screen, without seeing future scenes.” |
+| 1:55–2:15 | Show the authored ending and export the comic. | “At the end, the group keeps its choices and ending as an illustrated comic. The atmospheric artwork is procedural SVG.” |
+| 2:15–2:35 | Reload the controller; show restoration and a simple architecture diagram. | “The game survives a reload. Behind it are an Ollama host, the official MCP TypeScript SDK, a validated engine, and persistent local storage.” |
+| 2:35–2:50 | Show the repository README and MIT license. | “RPG Night runs locally in English and Spanish. Try the Alexa+ browser simulation from the open-source repository.” |
 
-Si la generación tarda más que la toma disponible, usar una toma previa real y señalar cualquier aceleración. No atribuir tiempos falsos ni presentar la historia escrita como una generación en directo. El cómic del modo clásico pertenece a otro flujo.
+## Rehearsed English route
 
-## Captura
+After the host offers the title, type **We choose The Bell Beneath Elderglen. Start it for Ada and Bo.**
+Choose the following visible labels, by button or **We choose: [label]**:
 
-- Con OBS: ventana del navegador, audio del sistema para narración y micrófono para explicación. Grabar y escuchar una prueba corta.
-- Se pueden montar fragmentos del mismo recorrido; mantener visibles opciones y resultado del dado.
-- Para filmar una TV con móvil: apoyar el móvil, bloquear enfoque y evitar reflejos. Esta vía no necesita un Echo.
-- Exportar a 1080p, comprobar texto/sonido y mantener duración inferior a tres minutos. Publicar en YouTube/Vimeo y probar el enlace sin sesión iniciada.
+1. Go to the village green.
+2. Ask Elin what the villagers need.
+3. Carry the drawing to the tower stairs.
+4. Test the stiff release lever.
+5. When a check is pending, type **Roll the dice**.
+6. Ring the bell and warn the village.
 
-## Recuperación
+Use the labels actually displayed. Both d20 outcomes on this route reach the spillway decision; do
+not re-roll to manufacture success. Reload the same game to show persistence.
 
-- Modelo apagado: arrancar Ollama, comprobar `ollama list` y volver a abrir el host. Una acción confirmada por MCP no depende de una segunda inferencia para narrarse.
-- Generación fallida: mostrar el aviso y elegir una historia escrita; no fingir contenido generado.
-- Conflicto entre controladores: se recupera la vista actual sin repetir la acción; elegir de nuevo desde esa revisión.
-- Micrófono ausente: escribir el mismo texto. Mantener clara la etiqueta de simulación.
-- Repositorio privado: comprobar acceso de jueces antes de entregar; un push no lo hace público.
+## Capture and submission
 
-## Asistencia de desarrollo
+OBS or a screen recorder can capture the browser and an English explanatory voiceover. Keep text
+legible. Export at 1080p, check the final runtime, and upload publicly to YouTube/Vimeo.
+Test the video URL while signed out. See [submission guide](ENTREGA-JAM.md).
 
-Codex/Luna y Grok ayudaron en implementación y revisión. Grok agotó saldo HTTP 402 en una corrección; el trabajo restante se completó sin comprar saldo. Evidencias y límites: [review.md](review.md).
+Optional generation is outside this short recording plan. If shown separately, record an actual
+preparation and review the resulting prose. Clearly mark any edited waiting time. Do not show the
+classic game's comic as though it belongs to the conversational session.

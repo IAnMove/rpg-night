@@ -31,21 +31,21 @@ The final review could not execute Docker because Docker Desktop's Linux engine 
 
 ## Ollama on another LAN computer
 
-The application and model may run on separate computers. For example, RPG Night on `.104` and Ollama
-on `.115`, put these settings in the application's ignored `.env` file and restart `npm start`:
+The application and model may run on separate computers. Replace `APP_LAN_IP` and `OLLAMA_LAN_IP` below with the appropriate private IPv4 addresses,
+then put these settings in the application's ignored `.env` file and restart `npm start`:
 
 ```dotenv
 HOST=0.0.0.0
 PORT=3000
-PUBLIC_ORIGIN=http://10.20.30.10:3000
+PUBLIC_ORIGIN=http://<APP_LAN_IP>:3000
 HOST_MODE=ollama
-OLLAMA_BASE_URL=http://10.20.30.20:11434
+OLLAMA_BASE_URL=http://<OLLAMA_LAN_IP>:11434
 OLLAMA_MODEL=llama3.2:3b
 PROVIDER=demo
 DATA_DIR=./data
 ```
 
-Use an installed model that supports tool calling. Verify `http://10.20.30.20:11434/api/tags` from the
+Use an installed model that supports tool calling. Verify `http://<OLLAMA_LAN_IP>:11434/api/tags` from the
 application computer first; the example does not install a model. If Ollama is listening only on loopback,
 configure its `OLLAMA_HOST` and firewall for the trusted LAN before restarting Ollama. Keep inference
 off the public internet. The model URL is server configuration, never player input: only HTTP loopback
@@ -59,7 +59,7 @@ take time to load; warm it with a short conversation before recording. Text play
 ## Phone/controller and shared TV
 
 For a trusted local network, set `HOST=0.0.0.0` and `PUBLIC_ORIGIN` to the exact address clients open,
-for example `http://192.168.1.20:3000`. The default host/origin checks intentionally reject unknown hosts.
+for example `http://<APP_LAN_IP>:3000`. The default host/origin checks intentionally reject unknown hosts.
 Open that address on the TV and use the copied session link on the controller.
 Do not bind only to the LAN IP while leaving `RPG_MCP_URL` on loopback: that makes the internal host lose
 its MCP connection. `HOST=0.0.0.0` keeps both addresses reachable. The host/origin check still accepts only

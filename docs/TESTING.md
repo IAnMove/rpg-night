@@ -1,117 +1,76 @@
-# Verification
+# Tests and verification
 
-## Private LAN model deployment — October 23, 2026
+## Required checks
 
-The application now accepts an operator-configured Ollama HTTP origin on a private RFC1918 IPv4
-address as well as loopback. The canonical MCP connection remains loopback-only. Regression checks
-reject public/metadata hosts, URL credentials and paths/queries/fragments; **90/90** deterministic
-tests and the production build passed after this change and the exact-choice/dice fixes.
-
-A separate compiled server and synthetic data completed **La campana bajo Elderglen** in Spanish
-using `llama3.2:3b` served by Ollama on another LAN computer. Eight conversational requests reached
-revision 7 and an authored ending, including a pending d20; the public TV history and SVG export agreed.
-The first catalogue request took 31.9 s including cold setup; selecting and starting took 4.8 s.
-The six subsequent exact choices/dice commands used canonical MCP without inference and took 20–25 ms
-inside the same computer. These are one-run observations, not latency guarantees.
-
-The trial with `qwen3.5:9b` exposed a verbatim choice being narrated without committing it. Exact public
-labels now take the same authoritative shortcut as numbered choices, with question/negation/ambiguity
-regressions. Larger installed models used tools but had longer loading/inference times in this setup.
-This LAN smoke test does not certify arbitrary free-form interpretation, generated prose or microphone
-input. Local reports/data remain ignored under `.work/lan-llm/`; `.env` is deployment configuration and
-must stay untracked. The earlier browser/export review below remains the dated evidence for the UI.
-
-## Commands and coverage
+From the repository root, with Node.js 22.12 or later:
 
 ```sh
 npm ci
+npm run check
 npm test
 npm run build
 ```
 
-Server tests run with Node's test runner and isolated temporary data directories. They cover every
-world/language, normal and early endings, dice consumption, inventory consequences, concurrent stale
-choices, saved-session recovery, validation, XML escaping, HTTP routes, SSE cleanup and the official MCP
-client making real Streamable HTTP calls. AWS response parsing/fallback is tested using a fake transport;
-no test incurs AWS charges.
-
-The deterministic suite covers the game engine, persistence, MCP protocol, local host orchestration,
-security boundaries, HTTP routes and browser behavior, including delayed-response ordering between two
-screens and simulated voice recognition/narration. Simulated speech verifies application behavior;
-real microphone capture and browser voice availability remain hardware checks below.
-
-## Local LLM feasibility probe
-
-With Ollama running and `qwen3:4b-instruct-2507-q4_K_M` already installed, three opt-in checks use real
-local inference:
-
-```powershell
-npm.cmd run probe:host       # historical v1 tools, isolated synthetic game
-npm.cmd run probe:host:v2    # current browser host → Ollama → canonical MCP path
-npm.cmd run probe:generation # local Ollama → prepare/poll/list/start/play-to-ending via canonical MCP
-npm.cmd run eval:host:v2     # 20 conversational checks (10 per language) over real local Ollama/MCP
-```
-
-The v2 probe binds port 3102 by default (override with `HOST_LIVE_PORT`), uses a temporary data
-directory, and writes a summary without player transcripts to `.work/host-live/`. It also completes one
-authored adventure per language and checks the real public TV snapshot, first SSE event, and SVG export.
-It does not touch the game on port 3000, download models, or call a paid inference API. Failed checks
-return a nonzero exit code. The v1 result is historical; it uses the old tools on `/mcp/legacy` and does
-not validate the new host contract. Narration fidelity still requires human review. See [initial probe
-evidence](feasibility.md) and the [current host v2 report](host-v2-check.md).
-
-The generation probe binds port 3103 by default (override with `GENERATION_LIVE_PORT`), uses a temporary
-data directory, and writes only the model, generated adventure title/ID, operation status, final revision
-and elapsed time to `.work/generation-live/`. It does not save the story to the repository or touch the app
-on port 3000. The current English run generated, validated, listed, started and played a story to its
-ending; earlier attempts exposed model/schema mismatches and motivated a conservative fallback for omitted
-choice action text. See [live generation result](generation-live-check.md). Spanish generation was also
-verified in the conversational evaluation described below.
-
-The conversational evaluation uses the configured local Ollama model, an isolated data directory and a
-temporary host port (3104 by default; override with `HOST_EVAL_PORT`). It runs ten behavioral scenarios in
-English and repeats them in Spanish, including a newly generated story in each language. It writes a
-summary report to ignored `.work/review/` without conversation transcripts, premises, player names or free-form
-model responses. It does not touch the game on port 3000 or call a paid model API. The run can take a few
-minutes because story generation is real. The latest result and limits are recorded in [review](review.md).
-
-## Latest verification
-
-On 22 October 2026, `npm.cmd test` passed **88/88**, `npm.cmd run build` completed, and
-`PLAYWRIGHT_CHANNEL=chrome npm.cmd run test:e2e` passed **8/8** using the installed Chrome. The live
-Ollama/MCP conversational matrix passed **20/20** across English and Spanish. Automated assertions cover
-tool execution, state and privacy invariants; a person still needs to review narrative quality and test a
-real microphone. See the [review report](review.md) and [shared-screen probe](host-v2-check.md).
+Use `npm.cmd` on PowerShell if necessary. The deterministic suite uses isolated temporary data and
+mock model/AWS transports; it does not require downloading a model or making paid AWS requests.
 
 ## Browser tests
 
 ```sh
 npx playwright install chromium
-npm run build
 npm run test:e2e
 ```
 
-On a machine with Chrome already installed you can use `PLAYWRIGHT_CHANNEL=chrome` instead of downloading
-Chromium. In PowerShell: `$env:PLAYWRIGHT_CHANNEL='chrome'; npm run test:e2e`.
-The suite starts the **production build** on port 3101, stores its sessions in ignored
-`.work/browser-data`, and exercises the actual UI. Failed runs retain a Playwright trace.
+If Chrome is already installed, `PLAYWRIGHT_CHANNEL=chrome` can select it instead. On PowerShell:
 
-The final review also installed a clean source snapshot using `npm ci --offline`, compiled it and ran
-the compiled host with real Ollama/MCP on port 3110. It completed an English authored story and a newly
-generated Spanish one, downloaded/decoded PNG, checked self-contained SVG, printed PDF, and compared
-the entire public state after a process restart. PDF extraction checked every played narration; all
-nine rendered pages were visually reviewed. These local artifacts are in ignored `.work/final-review`.
-The host-specific browser suite was also rerun after the saved-conversation recovery change (4/4).
+```powershell
+$env:PLAYWRIGHT_CHANNEL = 'chrome'
+npm.cmd run test:e2e
+```
 
-Generation validation checks mechanical playability of every reachable state and both d20 outcomes,
-not literary consistency. The review found a narrative contradiction and strengthened the prompt;
-generated prose still needs editorial review. See [the findings](review.md).
+Playwright starts an isolated server on port 3101. It checks the classic game and conversational
+controller, shared screen, exports, mobile layout, restoration and stale responses. Conversational
+browser tests mock the model-facing HTTP flow.
 
-Manual checks that require hardware, permissions or accounts:
+## Optional live model checks
 
-- Allow the microphone in a supporting browser and speak one action in each language.
-- Enable narration, mute it, change chapters and ensure narration does not repeat on dice updates.
-- Use full screen on the intended TV and check readability from the sofa.
-- Verify the browser's print dialog saves the entire comic as PDF.
-- If demonstrating Bedrock, use valid AWS credentials and confirm both models work in your region.
-- If partner access to an Alexa+ host is available, test its HTTPS integration separately. The browser simulation is the documented submission path and needs no Echo connection.
+Keep Ollama and the documented model running before opting in:
+
+```sh
+npm run probe:host:v2
+npm run eval:host:v2
+npm run probe:generation
+```
+
+These commands perform real local inference and can take time. The v2 host probe uses a separate
+port and temporary game data. The evaluation checks 20 English/Spanish scenarios and observable
+tool/state behavior. The older `probe:host` command targets the separate legacy API.
+Generated text still needs human review.
+
+## Coverage and observed results
+
+As of October 23, 2026, the deterministic suite contains **90 passing tests**. It covers schema and
+graph validation, bounded generated-story playability, engine conditions/effects, d20 checks,
+persistence, idempotency, concurrency, HTTP/MCP, public projections, exports and conversational
+recovery. The frontend/server production build and strict TypeScript checks pass.
+
+The previously completed Chrome suite passed **8/8** scenarios. Real Ollama/MCP evaluation passed
+**20/20** English/Spanish scenarios with the documented Qwen3 4B model. A separate LAN deployment
+completed the authored Spanish adventure with Llama 3.2 3B, including a d20, public TV history and
+the SVG comic. Numbered or exact-label choices execute via MCP without model inference.
+
+Production was also exercised from a clean source copy, including installation, English/Spanish
+endings, restart persistence and PNG/SVG/PDF exports. Exported PDF pages were rendered and inspected.
+These results cover the tested examples, rather than arbitrary generated prose or every device.
+
+## Limits of the evidence
+
+- Real microphone capture, speaker quality and a physical TV need a human rehearsal. Speech e2e
+  input is synthetic; text/button play does not certify a microphone.
+- Small models can misinterpret open-ended requests or write contradictory stories. Mechanical
+  validation does not prove literary consistency.
+- Live Bedrock calls were not made; AWS adapter parsing/fallback uses a fake transport.
+- Docker configuration was reviewed, but a running image was not verified.
+- A server responding to its own LAN address does not establish another device's firewall access.
+
+Keep local test data, transcripts, screenshots and generated files outside version control.
